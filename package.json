@@ -1,0 +1,34 @@
+{
+  "name": "chaostoolbox",
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "concurrently \"npm run dev:server\" \"npm run dev:client\"",
+    "dev:client": "vite --host 127.0.0.1",
+    "dev:server": "tsx server/index.ts",
+    "build": "vue-tsc --noEmit && vite build",
+    "test": "tsx --test tests/*.test.ts"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "description": "Vue and TypeScript playground for modernized old repositories.",
+  "dependencies": {
+    "@vitejs/plugin-vue": "^6.0.7",
+    "better-sqlite3": "^12.11.1",
+    "cors": "^2.8.6",
+    "express": "^5.2.1",
+    "typescript": "^6.0.3",
+    "vite": "^8.0.16",
+    "vue": "^3.5.38"
+  },
+  "devDependencies": {
+    "@types/better-sqlite3": "^7.6.13",
+    "@types/cors": "^2.8.19",
+    "@types/express": "^5.0.6",
+    "@types/node": "^26.0.0",
+    "concurrently": "^10.0.3",
+    "tsx": "^4.22.4",
+    "vue-tsc": "^3.3.5"
+  }
+}

@@ -1,0 +1,421 @@
+[
+    {
+        "id": 1,
+        "title": "Getting title and meta tags from external website",
+        "description": "Tutorial on how to extract meta data and the page title from a website.",
+        "url": "https://stackoverflow.com/questions/3711357/getting-title-and-meta-tags-from-external-website",
+        "tags": [
+            {
+                "name": "PHP"
+            },
+            {
+                "name": "stackoverflow"
+            },
+            {
+                "name": "Meta"
+            }
+        ]
+    },
+    {
+        "id": 2,
+        "title": "Markdown Cheatsheet",
+        "description": "A collection of Markdown syntax.",
+        "url": "https://github.com/adam-p/markdown-here/wiki/Markdown-Cheatsheet",
+        "tags": [
+            {
+                "name": "Markdown"
+            },
+            {
+                "name": "Cheatsheet"
+            },
+            {
+                "name": "Syntax"
+            }
+        ]
+    },
+    {
+        "id": 3,
+        "title": "Programmier.bar Podcast",
+        "description": "A webdeveloper podcast, theming around progressive web apps, css grids, typescript or other specific topics of webdevelopment and appdevelopment.",
+        "url": "https://www.programmier.bar/podcast",
+        "tags": [
+            {
+                "name": "Podcast"
+            }
+        ]
+    },
+    {
+        "id": 4,
+        "title": "React Axios Requests",
+        "description": "Promise based HTTP client for the browser and node.js",
+        "url": "https://alligator.io/react/axios-react/",
+        "tags": [
+            {
+                "name": "React"
+            },
+            {
+                "name": "JavaScript"
+            },
+            {
+                "name": "Axios"
+            },
+            {
+                "name": "Request"
+            },
+            {
+                "name": "npm"
+            }
+        ]
+    },
+    {
+        "id": 5,
+        "title": "TabNine",
+        "description": "Deep learning code auto completion.",
+        "url": "https://tabnine.com/",
+        "tags": [
+            {
+                "name": "Tool"
+            },
+            {
+                "name": "code completion"
+            }
+        ]
+    },
+    {
+        "id": 6,
+        "title": "Using Axios with React",
+        "description": "Tutorial on how to use axios in react.",
+        "url": "https://alligator.io/react/axios-react/",
+        "tags": [
+            {
+                "name": "React"
+            },
+            {
+                "name": "Axios"
+            },
+            {
+                "name": "Request"
+            }
+        ]
+    },
+    {
+        "id": 7,
+        "title": "TypeScript",
+        "description": "The official TypeScript documentation.",
+        "url": "https://www.typescriptlang.org/docs/home.html",
+        "tags": [
+            {
+                "name": "TypeScript"
+            },
+            {
+                "name": "Documentation"
+            }
+        ]
+    },
+    {
+        "id": 8,
+        "title": "Semantic UI React",
+        "description": "The official Semantic UI React documentation.",
+        "url": "https://react.semantic-ui.com/",
+        "tags": [
+            {
+                "name": "CSS"
+            },
+            {
+                "name": "Framework"
+            },
+            {
+                "name": "React"
+            }
+        ]
+    },
+    {
+        "id": 9,
+        "title": "How to keep Duplicates of an Array",
+        "description": "Tutorial on how to keep double entries / duplicates in an array",
+        "url": "https://stackoverflow.com/questions/47132232/how-to-keep-duplicates-of-an-array",
+        "tags": [
+            {
+                "name": "Arrays"
+            },
+            {
+                "name": "JavaScript"
+            },
+            {
+                "name": "stackoverflow"
+            }
+        ]
+    },
+    {
+        "id": 10,
+        "title": "Git Cheatsheet",
+        "description": "A collection of git commands",
+        "url": "https://github.github.com/training-kit/downloads/github-git-cheat-sheet.pdf",
+        "tags": [
+            {
+                "name": "Cheatsheet"
+            },
+            {
+                "name": "Git"
+            },
+            {
+                "name": "version control"
+            }
+        ]
+    },
+    {
+        "id": 11,
+        "title": "Dijoy",
+        "description": "The React codebase generator",
+        "url": "https://divjoy.com/",
+        "tags": [
+            {
+                "name": "Generator"
+            },
+            {
+                "name": "React"
+            },
+            {
+                "name": "JavaScript"
+            }
+        ]
+    },
+    {
+        "id": 12,
+        "title": "30 seconds of code",
+        "description": "Short code snippet collection",
+        "url": "https://www.30secondsofcode.org/",
+        "tags": [
+            {
+                "name": "JavaScript"
+            },
+            {
+                "name": "CSS"
+            },
+            {
+                "name": "Code snippet"
+            },
+            {
+                "name": "Phyton"
+            },
+            {
+                "name": "React"
+            }
+        ]
+    },
+    {
+        "id": 13,
+        "title": "Codewars",
+        "description": "Learning to program with code challenges",
+        "url": "https://www.codewars.com/",
+        "tags": [
+            {
+                "name": "Java"
+            },
+            {
+                "name": "JavaScript"
+            },
+            {
+                "name": "Education"
+            },
+            {
+                "name": "PHP"
+            },
+            {
+                "name": "Phyton"
+            },
+            {
+                "name": "SQL"
+            },
+            {
+                "name": "TypeScript"
+            },
+            {
+                "name": "Training"
+            }
+        ]
+    },
+    {
+        "id": 14,
+        "title": "Programming Idioms",
+        "description": "A website to check the ways to write algorithms, codesnippets, etc in different languages.",
+        "url": "https://programming-idioms.org/",
+        "tags": [
+            {
+                "name": "Java"
+            },
+            {
+                "name": "JavaScript"
+            },
+            {
+                "name": "Education"
+            },
+            {
+                "name": "PHP"
+            },
+            {
+                "name": "Phyton"
+            },
+            {
+                "name": "Code snippet"
+            },
+            {
+                "name": "Syntax"
+            },
+            {
+                "name": "Training"
+            }
+        ]
+    },
+    {
+        "id": 15,
+        "title": "Voyager - The Missing Laravel Admin",
+        "description": "An admin control panel for laravel with authentication, bread functions, database relationship editor, etc.",
+        "url": "https://voyager.devdojo.com/",
+        "tags": [
+            {
+                "name": "Laravel"
+            },
+            {
+                "name": "Control Panel"
+            },
+            {
+                "name": "PHP"
+            }
+        ]
+    },
+    {
+        "id": 16,
+        "title": "Sanity.io",
+        "description": "React-Based, Real-Time, Headless CMS for Structured Content.",
+        "url": "https://www.sanity.io/",
+        "tags": [
+            {
+                "name": "React"
+            },
+            {
+                "name": "CMS"
+            }
+        ]
+    },
+    {
+        "id": 17,
+        "title": "Materialize",
+        "description": "A modern responsive front-end framework based on Material Design.",
+        "url": "https://materializecss.com/",
+        "tags": [
+            {
+                "name": "CSS"
+            },
+            {
+                "name": "Framework"
+            }
+        ]
+    },
+    {
+        "id": 18,
+        "title": "Bootstrap",
+        "description": "Bootstrap is an open source toolkit for developing with HTML, CSS, and JS.",
+        "url": "https://getbootstrap.com/",
+        "tags": [
+            {
+                "name": "CSS"
+            },
+            {
+                "name": "Framework"
+            },
+            {
+                "name": "Toolkit"
+            },
+            {
+                "name": "JQuery"
+            },
+            {
+                "name": "SASS"
+            }
+        ]
+    },
+    {
+        "id": 19,
+        "title": "Lumen",
+        "description": "PHP Micro-Framework by Laravel",
+        "url": "https://lumen.laravel.com/",
+        "tags": [
+            {
+                "name": "Framework"
+            },
+            {
+                "name": "PHP"
+            },
+            {
+                "name": "Micro-Framework"
+            },
+            {
+                "name": "Laravel"
+            },
+            {
+                "name": "Backend"
+            }
+        ]
+    },
+    {
+        "id": 20,
+        "title": "Slim Framework",
+        "description": "PHP Micro-Framework",
+        "url": "http://www.slimframework.com/",
+        "tags": [
+            {
+                "name": "Framework"
+            },
+            {
+                "name": "PHP"
+            },
+            {
+                "name": "Micro-Framework"
+            },
+            {
+                "name": "Backend"
+            }
+        ]
+    },
+    {
+        "id": 21,
+        "title": "Symfony",
+        "description": "PHP Micro-Framework",
+        "url": "https://symfony.com/",
+        "tags": [
+            {
+                "name": "Framework"
+            },
+            {
+                "name": "PHP"
+            },
+            {
+                "name": "Micro-Framework"
+            },
+            {
+                "name": "Backend"
+            }
+        ]
+    },
+    {
+        "id": 22,
+        "title": "SailsJS",
+        "description": "JavaScript Micro-Framework",
+        "url": "https://sailsjs.com/",
+        "tags": [
+            {
+                "name": "Framework"
+            },
+            {
+                "name": "JavaScript"
+            },
+            {
+                "name": "Micro-Framework"
+            },
+            {
+                "name": "Backend"
+            }
+        ]
+    }
+]
