@@ -17,3 +17,34 @@ test("link store persists links and tags in SQLite", () => {
 
   store.close();
 });
+
+test("link store updates and deletes links", () => {
+  const store = createLinkStore(":memory:");
+  const saved = store.addLink({
+    title: "Old title",
+    description: "Old description",
+    url: "https://example.com/old",
+    tags: ["old"]
+  });
+
+  const updated = store.updateLink(saved.id, {
+    title: "New title",
+    description: "New description",
+    url: "https://example.com/new",
+    tags: ["new", "sqlite"]
+  });
+
+  assert.deepEqual(updated, {
+    id: saved.id,
+    title: "New title",
+    description: "New description",
+    url: "https://example.com/new",
+    tags: ["new", "sqlite"]
+  });
+
+  assert.equal(store.deleteLink(saved.id), true);
+  assert.deepEqual(store.listLinks(), []);
+  assert.equal(store.deleteLink(saved.id), false);
+
+  store.close();
+});

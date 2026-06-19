@@ -42,6 +42,28 @@ export function createLinkStore(filename: string, seedLinks: SeedLink[] = []) {
     return getLink(linkId);
   });
 
+  const setTags = db.transaction((linkId: number, tags: string[]) => {
+    db.prepare("DELETE FROM link_tags WHERE link_id = ?").run(linkId);
+    const insertTag = db.prepare("INSERT OR IGNORE INTO tags (name) VALUES (?)");
+    const findTag = db.prepare("SELECT id FROM tags WHERE name = ?");
+    const connectTag = db.prepare("INSERT OR IGNORE INTO link_tags (link_id, tag_id) VALUES (?, ?)");
+
+    for (const tag of cleanTags(tags)) {
+      insertTag.run(tag);
+      connectTag.run(linkId, (findTag.get(tag) as { id: number }).id);
+    }
+  });
+
+  const updateLinkTx = db.transaction((id: number, link: NewLinkEntry) => {
+    const result = db
+      .prepare("UPDATE links SET title = ?, description = ?, url = ? WHERE id = ?")
+      .run(link.title.trim(), link.description.trim(), link.url.trim(), id);
+
+    if (result.changes === 0) return null;
+    setTags(id, link.tags);
+    return getLink(id);
+  });
+
   function cleanTags(tags: string[]) {
     return [...new Set(tags.map((tag) => tag.trim()).filter(Boolean))];
   }
@@ -72,6 +94,14 @@ export function createLinkStore(filename: string, seedLinks: SeedLink[] = []) {
     return addLinkTx({ ...link, tags: cleanTags(link.tags) });
   }
 
+  function updateLink(id: number, link: NewLinkEntry): LinkEntry | null {
+    return updateLinkTx(id, { ...link, tags: cleanTags(link.tags) });
+  }
+
+  function deleteLink(id: number): boolean {
+    return db.prepare("DELETE FROM links WHERE id = ?").run(id).changes > 0;
+  }
+
   const count = db.prepare("SELECT COUNT(*) AS count FROM links").get() as { count: number };
   if (count.count === 0 && seedLinks.length > 0) {
     for (const link of seedLinks) {
@@ -86,7 +116,9 @@ export function createLinkStore(filename: string, seedLinks: SeedLink[] = []) {
 
   return {
     addLink,
+    deleteLink,
     listLinks,
+    updateLink,
     close: () => db.close()
   };
 }
