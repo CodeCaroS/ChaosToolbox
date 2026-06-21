@@ -64,3 +64,17 @@ test("rss parser uses permalink guid when link is missing", () => {
     { title: "Guid Item", url: "https://example.com/guid", publishedAt: null, summary: "" }
   ]);
 });
+
+test("rss parser falls back to content encoded", () => {
+  assert.deepEqual(parseFeedItems(`
+    <rss><channel>
+      <item>
+        <title>Encoded Summary</title>
+        <link>https://example.com/encoded</link>
+        <content:encoded><![CDATA[<p>Encoded <b>summary</b>.</p>]]></content:encoded>
+      </item>
+    </channel></rss>
+  `), [
+    { title: "Encoded Summary", url: "https://example.com/encoded", publishedAt: null, summary: "Encoded summary." }
+  ]);
+});

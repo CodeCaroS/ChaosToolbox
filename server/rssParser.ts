@@ -10,7 +10,7 @@ export function parseFeedItems(xml: string): ParsedFeedItem[] {
       title,
       url,
       publishedAt: text(block, "pubDate") || text(block, "updated") || text(block, "published") || null,
-      summary: stripTags(text(block, "description") || text(block, "summary") || text(block, "content"))
+      summary: stripTags(text(block, "description") || text(block, "summary") || text(block, "content") || text(block, "content:encoded"))
     }];
   });
 }
