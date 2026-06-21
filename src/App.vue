@@ -65,6 +65,9 @@ const sources = computed(() => links.value.map((link) => ({
 const inboxSources = computed(() => filteredSources.value.filter((source) => source.status === "inbox" || source.status === "refine"));
 const keptSources = computed(() => sources.value.filter((source) => source.status === "keep"));
 const openTasks = computed(() => tasks.value.filter((task) => !task.done));
+const newFeedItems = computed(() => feedItems.value.filter((item) => item.status === "new"));
+const newEmails = computed(() => emails.value.filter((email) => email.status === "new"));
+const inboxCount = computed(() => inboxSources.value.length + newFeedItems.value.length + newEmails.value.length);
 const reviewItems = computed(() => [
   ...sources.value.filter((source) => source.status === "inbox").map((source) => ({
     id: `source-${source.id}`,
@@ -73,6 +76,22 @@ const reviewItems = computed(() => [
     icon: "fa-diagram-project",
     reason: "wartet in der Inbox",
     action: "Keep, Refine oder Archive"
+  })),
+  ...newFeedItems.value.map((item) => ({
+    id: `rss-${item.id}`,
+    title: item.title,
+    kind: "RSS",
+    icon: "fa-rss",
+    reason: item.feedTitle,
+    action: "Save, Note, Task oder Ignore"
+  })),
+  ...newEmails.value.map((email) => ({
+    id: `email-${email.id}`,
+    title: email.subject,
+    kind: "E-Mail",
+    icon: "fa-envelope",
+    reason: email.fromAddress || "unknown sender",
+    action: "Source, Note, Task oder Ignore"
   })),
   ...notes.value.filter((note) => !note.categoryName && !hasSourceHint(note)).map((note) => ({
     id: `note-${note.id}`,
@@ -108,7 +127,7 @@ const filteredTasks = computed(() => {
 });
 
 const stats = computed(() => [
-  { label: "Inbox", value: inboxSources.value.length, icon: "fa-inbox" },
+  { label: "Inbox", value: inboxCount.value, icon: "fa-inbox" },
   { label: "Sources", value: links.value.length, icon: "fa-diagram-project" },
   { label: "Notes", value: notes.value.length, icon: "fa-note-sticky" },
   { label: "Open Tasks", value: openTasks.value.length, icon: "fa-list-check" },
