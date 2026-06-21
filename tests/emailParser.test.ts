@@ -107,6 +107,22 @@ test("email parser falls back to html text when no plain body exists", () => {
   ].join("\r\n")).body, "Hello HTML inbox.");
 });
 
+test("email parser decodes html entities in html body fallback", () => {
+  assert.equal(parseEmail([
+    "Message-ID: <html-entities@example.com>",
+    "From: Carol <carol@example.com>",
+    "To: Dev <dev@example.com>",
+    "Subject: HTML inbox",
+    "Content-Type: multipart/alternative; boundary=\"abc\"",
+    "",
+    "--abc",
+    "Content-Type: text/html; charset=utf-8",
+    "",
+    "<p>Carol&amp;Dev &#x2713; &#8217;</p>",
+    "--abc--"
+  ].join("\r\n")).body, "Carol&Dev \u2713 \u2019");
+});
+
 test("email parser extracts attachment metadata and content", () => {
   const parsed = parseEmail([
     "Message-ID: <attachment@example.com>",
