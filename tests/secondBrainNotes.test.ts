@@ -11,6 +11,7 @@ test("lists markdown notes from the second brain checkout", () => {
   mkdirSync(join(root, ".obsidian"), { recursive: true });
   writeFileSync(join(root, "README.md"), "# Vault Home\n\nStart here.");
   writeFileSync(join(root, "frontmatter.md"), "---\ntitle: Frontmatter Title\n---\nSaved body.");
+  writeFileSync(join(root, "quoted.md"), "---\ntitle: 'Quoted Title'\n---\nQuoted body.");
   writeFileSync(join(root, "01-knowledge", "plain-note.md"), "No heading yet.");
   writeFileSync(join(root, ".obsidian", "ignored.md"), "# Hidden");
   writeFileSync(join(root, "not-markdown.txt"), "# Nope");
@@ -32,6 +33,13 @@ test("lists markdown notes from the second brain checkout", () => {
     },
     {
       id: -3,
+      title: "Quoted Title",
+      body: "Quoted body.",
+      categoryId: null,
+      categoryName: "second-brain"
+    },
+    {
+      id: -4,
       title: "plain note",
       body: "No heading yet.",
       categoryId: null,

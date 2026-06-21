@@ -62,7 +62,7 @@ function parseMarkdown(body: string): { body: string; title: string | null } {
   const match = body.match(/^---\n([\s\S]*?)\n---\n?/);
   if (!match) return { body, title: null };
 
-  const title = match[1].match(/^title:\s*"?([^"\n]+)"?\s*$/m)?.[1]?.trim() ?? null;
+  const title = match[1].match(/^title:\s*["']?([^"'\n]+)["']?\s*$/m)?.[1]?.trim() ?? null;
   return { body: body.slice(match[0].length).trimStart(), title };
 }
 
