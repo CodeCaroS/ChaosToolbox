@@ -84,12 +84,22 @@ export function createRssStore(filename: string) {
     return db.prepare("UPDATE feed_items SET status = ? WHERE feed_id = ? AND url = ?").run(status, feedId, url).changes > 0;
   }
 
+  function setFeedEnabled(id: number, enabled: boolean): boolean {
+    return db.prepare("UPDATE feeds SET enabled = ? WHERE id = ?").run(enabled ? 1 : 0, id).changes > 0;
+  }
+
+  function deleteFeed(id: number): boolean {
+    return db.prepare("DELETE FROM feeds WHERE id = ?").run(id).changes > 0;
+  }
+
   return {
     addFeed,
     close: () => db.close(),
+    deleteFeed,
     listFeedItems,
     listFeeds,
     markFeedItem,
+    setFeedEnabled,
     upsertFeedItems
   };
 }

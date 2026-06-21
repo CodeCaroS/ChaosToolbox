@@ -166,6 +166,36 @@ app.post("/api/rss/opml", (req, res) => {
   res.json({ created, skipped });
 });
 
+app.patch("/api/rss/feeds/:id/enabled", (req, res) => {
+  const id = Number(req.params.id);
+  if (!Number.isInteger(id) || id < 1 || typeof req.body?.enabled !== "boolean") {
+    res.status(400).json({ error: "id and enabled are required" });
+    return;
+  }
+
+  if (!rssStore.setFeedEnabled(id, req.body.enabled)) {
+    res.status(404).json({ error: "feed not found" });
+    return;
+  }
+
+  res.json(rssStore.listFeeds().find((feed) => feed.id === id));
+});
+
+app.delete("/api/rss/feeds/:id", (req, res) => {
+  const id = Number(req.params.id);
+  if (!Number.isInteger(id) || id < 1) {
+    res.status(400).json({ error: "valid id is required" });
+    return;
+  }
+
+  if (!rssStore.deleteFeed(id)) {
+    res.status(404).json({ error: "feed not found" });
+    return;
+  }
+
+  res.status(204).end();
+});
+
 app.get("/api/rss/items", (_req, res) => {
   res.json(rssStore.listFeedItems());
 });

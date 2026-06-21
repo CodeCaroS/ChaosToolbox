@@ -320,6 +320,32 @@ async function fetchFeed(feed: FeedEntry) {
   await loadFeedItems();
 }
 
+async function setFeedEnabled(feed: FeedEntry, enabled: boolean) {
+  const response = await fetch(`/api/rss/feeds/${feed.id}/enabled`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ enabled })
+  });
+  if (!response.ok) {
+    error.value = "RSS Feed konnte nicht aktualisiert werden.";
+    return;
+  }
+
+  const updated = await response.json() as FeedEntry;
+  feeds.value = feeds.value.map((current) => current.id === feed.id ? updated : current);
+}
+
+async function deleteFeed(feed: FeedEntry) {
+  const response = await fetch(`/api/rss/feeds/${feed.id}`, { method: "DELETE" });
+  if (!response.ok) {
+    error.value = "RSS Feed konnte nicht geloescht werden.";
+    return;
+  }
+
+  feeds.value = feeds.value.filter((current) => current.id !== feed.id);
+  await loadFeedItems();
+}
+
 async function saveFeedItem(item: FeedItemEntry) {
   await actOnFeedItem("/api/rss/items/save", item, (payload) => {
     links.value.unshift(payload as LinkEntry);
@@ -757,10 +783,18 @@ function hasSourceHint(note: NoteEntry) {
                   <i class="fa-solid fa-arrows-rotate"></i>
                   Refresh all
                 </button>
-                <button v-for="feed in feeds" :key="feed.id" class="btn btn-sm btn-outline justify-start rounded-md" type="button" @click="fetchFeed(feed)">
-                  <i class="fa-solid fa-rotate"></i>
-                  {{ feed.title }}
-                </button>
+                <div v-for="feed in feeds" :key="feed.id" class="flex items-center gap-2 rounded-md border border-base-300 bg-base-100 p-2">
+                  <button class="btn btn-sm btn-outline min-w-0 flex-1 justify-start rounded-md" type="button" :disabled="!feed.enabled" @click="fetchFeed(feed)">
+                    <i class="fa-solid fa-rotate"></i>
+                    <span class="truncate">{{ feed.title }}</span>
+                  </button>
+                  <button class="btn btn-sm btn-square rounded-md" :class="feed.enabled ? 'btn-outline' : 'btn-primary'" type="button" :aria-label="feed.enabled ? 'Pause feed' : 'Resume feed'" @click="setFeedEnabled(feed, !feed.enabled)">
+                    <i class="fa-solid" :class="feed.enabled ? 'fa-pause' : 'fa-play'"></i>
+                  </button>
+                  <button class="btn btn-sm btn-square btn-ghost rounded-md" type="button" aria-label="Delete feed" @click="deleteFeed(feed)">
+                    <i class="fa-solid fa-trash"></i>
+                  </button>
+                </div>
                 <textarea v-model="opmlForm.body" class="textarea textarea-bordered min-h-28 rounded-md bg-base-100" placeholder="OPML import" aria-label="OPML import"></textarea>
                 <button class="btn btn-outline rounded-md" type="button" :disabled="!opmlForm.body.trim()" @click="importOpml">
                   <i class="fa-solid fa-file-import"></i>

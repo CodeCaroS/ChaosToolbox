@@ -41,6 +41,11 @@ test("rss store creates feeds and upserts feed items", () => {
       status: "saved"
     }
   ]);
+  assert.equal(rss.setFeedEnabled(feed.id, false), true);
+  assert.equal(rss.listFeeds()[0].enabled, false);
+  assert.equal(rss.deleteFeed(feed.id), true);
+  assert.deepEqual(rss.listFeeds(), []);
+  assert.deepEqual(rss.listFeedItems(), []);
 
   rss.close();
 });
