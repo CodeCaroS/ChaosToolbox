@@ -54,7 +54,7 @@ function parseBody(headers: Map<string, string>, value: string): { body: string;
     }
     if (disposition.toLowerCase().startsWith("attachment")) {
       attachments.push({
-        filename: cleanFilename(decodeHeader(disposition.match(/filename="?([^";]+)"?/i)?.[1] ?? "attachment")),
+        filename: cleanFilename(parseFilename(disposition)),
         contentType: (partHeaders.get("content-type") ?? "application/octet-stream").split(";")[0].trim(),
         contentBase64: partBody.replace(/\s/g, "")
       });
@@ -66,6 +66,20 @@ function parseBody(headers: Map<string, string>, value: string): { body: string;
 
 function cleanFilename(value: string): string {
   return value.replace(/[\\/]/g, "_").trim() || "attachment";
+}
+
+function parseFilename(disposition: string): string {
+  const encoded = disposition.match(/filename\*=([^;]+)/i)?.[1]?.trim().replace(/^"|"$/g, "");
+  if (encoded) return decodeRfc2231(encoded);
+  return decodeHeader(disposition.match(/filename="?([^";]+)"?/i)?.[1] ?? "attachment");
+}
+
+function decodeRfc2231(value: string): string {
+  const match = value.match(/^([^']*)''(.+)$/);
+  const charset = match?.[1] ?? "utf-8";
+  const encoded = match?.[2] ?? value;
+  const bytes = Buffer.from(encoded.replace(/%([0-9a-f]{2})/gi, (_hex, code: string) => String.fromCharCode(Number.parseInt(code, 16))), "binary");
+  return /^iso-8859-1$/i.test(charset) ? bytes.toString("latin1") : bytes.toString("utf8");
 }
 
 function decodeText(value: string, encoding = ""): string {
