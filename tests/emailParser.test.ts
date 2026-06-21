@@ -99,3 +99,41 @@ test("email parser decodes base64 text body", () => {
     "SGVsbG8gaW5ib3gu"
   ].join("\r\n")).body, "Hello inbox.");
 });
+
+test("email parser decodes encoded header words", () => {
+  const parsed = parseEmail([
+    "Message-ID: <headers@example.com>",
+    "From: =?UTF-8?Q?Carol_M=C3=BCller?= <carol@example.com>",
+    "To: Dev <dev@example.com>",
+    "Subject: =?UTF-8?B?R3LDvMOfZQ==?=",
+    "",
+    "Hello."
+  ].join("\r\n"));
+
+  assert.equal(parsed.fromAddress, "Carol Müller <carol@example.com>");
+  assert.equal(parsed.subject, "Grüße");
+});
+
+test("email parser decodes encoded attachment filenames", () => {
+  const parsed = parseEmail([
+    "Message-ID: <filename@example.com>",
+    "From: Carol <carol@example.com>",
+    "To: Dev <dev@example.com>",
+    "Subject: Attachment inbox",
+    "Content-Type: multipart/mixed; boundary=\"abc\"",
+    "",
+    "--abc",
+    "Content-Type: text/plain",
+    "",
+    "See attachment.",
+    "--abc",
+    "Content-Type: application/pdf",
+    "Content-Disposition: attachment; filename=\"=?UTF-8?Q?Plan_M=C3=BCller.pdf?=\"",
+    "Content-Transfer-Encoding: base64",
+    "",
+    "UERG",
+    "--abc--"
+  ].join("\r\n"));
+
+  assert.equal(parsed.attachments?.[0]?.filename, "Plan Müller.pdf");
+});

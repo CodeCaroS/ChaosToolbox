@@ -9,9 +9,9 @@ export function parseEmail(raw: string): ParsedEmail {
 
   return {
     messageId: headers.get("message-id") ?? `sha256:${createHash("sha256").update(raw).digest("hex")}`,
-    fromAddress: headers.get("from") ?? "",
-    toAddress: headers.get("to") ?? "",
-    subject: headers.get("subject") ?? "(no subject)",
+    fromAddress: decodeHeader(headers.get("from") ?? ""),
+    toAddress: decodeHeader(headers.get("to") ?? ""),
+    subject: decodeHeader(headers.get("subject") ?? "(no subject)"),
     receivedAt: headers.get("date") ?? null,
     body: parsedBody.body,
     attachments: parsedBody.attachments
@@ -54,7 +54,7 @@ function parseBody(headers: Map<string, string>, value: string): { body: string;
     }
     if (disposition.toLowerCase().startsWith("attachment")) {
       attachments.push({
-        filename: cleanFilename(disposition.match(/filename="?([^";]+)"?/i)?.[1] ?? "attachment"),
+        filename: cleanFilename(decodeHeader(disposition.match(/filename="?([^";]+)"?/i)?.[1] ?? "attachment")),
         contentType: (partHeaders.get("content-type") ?? "application/octet-stream").split(";")[0].trim(),
         contentBase64: partBody.replace(/\s/g, "")
       });
@@ -83,4 +83,13 @@ function decodeText(value: string, encoding = ""): string {
     }
   }
   return Buffer.from(bytes).toString("utf8").trim();
+}
+
+function decodeHeader(value: string): string {
+  return value.replace(/=\?([^?]+)\?([bq])\?([^?]*)\?=/gi, (_match, charset: string, encoding: string, body: string) => {
+    const bytes = encoding.toLowerCase() === "b"
+      ? Buffer.from(body, "base64")
+      : Buffer.from(body.replace(/_/g, " ").replace(/=([0-9a-f]{2})/gi, (_hex, code: string) => String.fromCharCode(Number.parseInt(code, 16))), "binary");
+    return /^iso-8859-1$/i.test(charset) ? bytes.toString("latin1") : bytes.toString("utf8");
+  });
 }
