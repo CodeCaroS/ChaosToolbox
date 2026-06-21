@@ -3,6 +3,8 @@ import { computed, onMounted, reactive, ref } from "vue";
 import SourceCard from "./SourceCard.vue";
 import type { LinkEntry, NewLinkEntry } from "./modules/linklist/types";
 import type { NewNoteEntry, NoteEntry } from "./modules/notes/types";
+import type { FeedEntry, FeedItemEntry, NewFeedEntry } from "./modules/rss/types";
+import type { EmailEntry } from "./modules/email/types";
 import type { NewTaskEntry, TaskEntry } from "./modules/tasks/types";
 
 type ViewId = "dashboard" | "inbox" | "sources" | "notes" | "tasks" | "reviews";
@@ -22,6 +24,9 @@ type GitStatus = {
 const links = ref<LinkEntry[]>([]);
 const notes = ref<NoteEntry[]>([]);
 const tasks = ref<TaskEntry[]>([]);
+const feeds = ref<FeedEntry[]>([]);
+const feedItems = ref<FeedItemEntry[]>([]);
+const emails = ref<EmailEntry[]>([]);
 const gitStatus = ref<GitStatus | null>(null);
 const activeView = ref<ViewId>("dashboard");
 const search = ref("");
@@ -34,6 +39,9 @@ const forcePushConfirmed = ref(false);
 const sourceForm = reactive({ title: "", url: "", description: "", tags: "" });
 const noteForm = reactive({ title: "", body: "" });
 const taskForm = reactive({ title: "", notes: "", tags: "" });
+const feedForm = reactive({ title: "", url: "" });
+const opmlForm = reactive({ body: "" });
+const emailForm = reactive({ raw: "" });
 const gitForm = reactive({ message: "Sync Second Brain", remote: "", branch: "" });
 
 const navItems: Array<{ id: ViewId; label: string; icon: string }> = [
@@ -108,7 +116,7 @@ const stats = computed(() => [
 ]);
 
 onMounted(async () => {
-  await Promise.all([loadLinks(), loadNotes(), loadTasks(), loadGitStatus()]);
+  await Promise.all([loadLinks(), loadNotes(), loadTasks(), loadFeeds(), loadFeedItems(), loadEmails(), loadGitStatus()]);
   loading.value = false;
 });
 
@@ -122,6 +130,18 @@ async function loadNotes() {
 
 async function loadTasks() {
   tasks.value = await getJson<TaskEntry[]>("/api/tasks");
+}
+
+async function loadFeeds() {
+  feeds.value = await getJson<FeedEntry[]>("/api/rss/feeds");
+}
+
+async function loadFeedItems() {
+  feedItems.value = await getJson<FeedItemEntry[]>("/api/rss/items");
+}
+
+async function loadEmails() {
+  emails.value = await getJson<EmailEntry[]>("/api/email/messages");
 }
 
 async function loadGitStatus() {
@@ -216,6 +236,156 @@ async function addTask() {
   taskForm.title = "";
   taskForm.notes = "";
   taskForm.tags = "";
+}
+
+async function addFeed() {
+  error.value = "";
+  const payload: NewFeedEntry = {
+    title: feedForm.title.trim(),
+    url: feedForm.url.trim()
+  };
+
+  const response = await fetch("/api/rss/feeds", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload)
+  });
+
+  if (!response.ok) {
+    error.value = "RSS Feed braucht Titel und gueltige URL.";
+    return;
+  }
+
+  const feed = await response.json() as FeedEntry;
+  feeds.value.unshift(feed);
+  feedForm.title = "";
+  feedForm.url = "";
+  await fetchFeed(feed);
+}
+
+async function importOpml() {
+  const response = await fetch("/api/rss/opml", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ opml: opmlForm.body })
+  });
+
+  if (!response.ok) {
+    error.value = "OPML konnte nicht importiert werden.";
+    return;
+  }
+
+  gitResult.value = JSON.stringify(await response.json());
+  opmlForm.body = "";
+  await loadFeeds();
+}
+
+async function refreshAllFeeds() {
+  const response = await fetch("/api/rss/refresh", { method: "POST" });
+  if (!response.ok) {
+    error.value = "RSS Feeds konnten nicht abgerufen werden.";
+    return;
+  }
+
+  gitResult.value = JSON.stringify(await response.json());
+  await loadFeedItems();
+}
+
+async function fetchFeed(feed: FeedEntry) {
+  const response = await fetch(`/api/rss/feeds/${feed.id}/fetch`, { method: "POST" });
+  if (!response.ok) {
+    error.value = "RSS Feed konnte nicht abgerufen werden.";
+    return;
+  }
+  gitResult.value = JSON.stringify(await response.json());
+  await loadFeedItems();
+}
+
+async function saveFeedItem(item: FeedItemEntry) {
+  await actOnFeedItem("/api/rss/items/save", item, (payload) => {
+    links.value.unshift(payload as LinkEntry);
+  });
+}
+
+async function noteFeedItem(item: FeedItemEntry) {
+  await actOnFeedItem("/api/rss/items/note", item, (payload) => {
+    notes.value.unshift(payload as NoteEntry);
+  });
+}
+
+async function taskFeedItem(item: FeedItemEntry) {
+  await actOnFeedItem("/api/rss/items/task", item, (payload) => {
+    tasks.value.unshift(payload as TaskEntry);
+  });
+}
+
+async function ignoreFeedItem(item: FeedItemEntry) {
+  await actOnFeedItem("/api/rss/items/ignore", item);
+}
+
+async function actOnFeedItem(url: string, item: FeedItemEntry, apply?: (payload: unknown) => void) {
+  const response = await fetch(url, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(item)
+  });
+
+  if (!response.ok) {
+    error.value = "RSS Item konnte nicht verarbeitet werden.";
+    return;
+  }
+
+  if (response.status !== 204 && apply) apply(await response.json());
+  await loadFeedItems();
+}
+
+async function importEmail() {
+  const response = await fetch("/api/email/import", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ raw: emailForm.raw })
+  });
+
+  if (!response.ok) {
+    error.value = "E-Mail konnte nicht importiert werden.";
+    return;
+  }
+
+  emailForm.raw = "";
+  await loadEmails();
+}
+
+async function saveEmail(email: EmailEntry) {
+  await actOnEmail(`/api/email/messages/${email.id}/source`, (payload) => {
+    links.value.unshift(payload as LinkEntry);
+  });
+}
+
+async function noteEmail(email: EmailEntry) {
+  await actOnEmail(`/api/email/messages/${email.id}/note`, (payload) => {
+    notes.value.unshift(payload as NoteEntry);
+  });
+}
+
+async function taskEmail(email: EmailEntry) {
+  await actOnEmail(`/api/email/messages/${email.id}/task`, (payload) => {
+    tasks.value.unshift(payload as TaskEntry);
+  });
+}
+
+async function ignoreEmail(email: EmailEntry) {
+  await actOnEmail(`/api/email/messages/${email.id}/ignore`);
+}
+
+async function actOnEmail(url: string, apply?: (payload: unknown) => void) {
+  const response = await fetch(url, { method: "POST" });
+  if (!response.ok) {
+    error.value = "E-Mail konnte nicht verarbeitet werden.";
+    return;
+  }
+
+  if (response.status !== 204 && apply) apply(await response.json());
+  await loadEmails();
 }
 
 async function setSourceStatus(link: LinkEntry, status: SourceStatus) {
@@ -537,22 +707,127 @@ function hasSourceHint(note: NoteEntry) {
           </section>
 
           <section v-if="activeView === 'inbox'" class="grid gap-4 xl:grid-cols-[360px_1fr]">
-            <form class="grid content-start gap-3 rounded-md border border-base-300 bg-base-200 p-4" @submit.prevent="addSource">
-              <h3 class="text-lg font-semibold">
-                <i class="fa-solid fa-link mr-2 text-primary"></i>
-                New Source
-              </h3>
-              <input v-model="sourceForm.title" class="input input-bordered rounded-md bg-base-100" required placeholder="Title" aria-label="Source title">
-              <input v-model="sourceForm.url" class="input input-bordered rounded-md bg-base-100" required type="url" placeholder="https://..." aria-label="Source URL">
-              <textarea v-model="sourceForm.description" class="textarea textarea-bordered min-h-28 rounded-md bg-base-100" placeholder="Notes" aria-label="Source notes"></textarea>
-              <input v-model="sourceForm.tags" class="input input-bordered rounded-md bg-base-100" placeholder="tags" aria-label="Source tags">
-              <button class="btn btn-primary rounded-md" type="submit">
-                <i class="fa-solid fa-plus"></i>
-                Add
-              </button>
-            </form>
+            <div class="grid content-start gap-4">
+              <form class="grid content-start gap-3 rounded-md border border-base-300 bg-base-200 p-4" @submit.prevent="addSource">
+                <h3 class="text-lg font-semibold">
+                  <i class="fa-solid fa-link mr-2 text-primary"></i>
+                  New Source
+                </h3>
+                <input v-model="sourceForm.title" class="input input-bordered rounded-md bg-base-100" required placeholder="Title" aria-label="Source title">
+                <input v-model="sourceForm.url" class="input input-bordered rounded-md bg-base-100" required type="url" placeholder="https://..." aria-label="Source URL">
+                <textarea v-model="sourceForm.description" class="textarea textarea-bordered min-h-28 rounded-md bg-base-100" placeholder="Notes" aria-label="Source notes"></textarea>
+                <input v-model="sourceForm.tags" class="input input-bordered rounded-md bg-base-100" placeholder="tags" aria-label="Source tags">
+                <button class="btn btn-primary rounded-md" type="submit">
+                  <i class="fa-solid fa-plus"></i>
+                  Add
+                </button>
+              </form>
+
+              <form class="grid content-start gap-3 rounded-md border border-base-300 bg-base-200 p-4" @submit.prevent="addFeed">
+                <h3 class="text-lg font-semibold">
+                  <i class="fa-solid fa-rss mr-2 text-primary"></i>
+                  RSS Feed
+                </h3>
+                <input v-model="feedForm.title" class="input input-bordered rounded-md bg-base-100" required placeholder="Title" aria-label="Feed title">
+                <input v-model="feedForm.url" class="input input-bordered rounded-md bg-base-100" required type="url" placeholder="https://.../feed.xml" aria-label="Feed URL">
+                <button class="btn btn-primary rounded-md" type="submit">
+                  <i class="fa-solid fa-plus"></i>
+                  Add feed
+                </button>
+                <button class="btn btn-outline rounded-md" type="button" :disabled="feeds.length === 0" @click="refreshAllFeeds">
+                  <i class="fa-solid fa-arrows-rotate"></i>
+                  Refresh all
+                </button>
+                <button v-for="feed in feeds" :key="feed.id" class="btn btn-sm btn-outline justify-start rounded-md" type="button" @click="fetchFeed(feed)">
+                  <i class="fa-solid fa-rotate"></i>
+                  {{ feed.title }}
+                </button>
+                <textarea v-model="opmlForm.body" class="textarea textarea-bordered min-h-28 rounded-md bg-base-100" placeholder="OPML import" aria-label="OPML import"></textarea>
+                <button class="btn btn-outline rounded-md" type="button" :disabled="!opmlForm.body.trim()" @click="importOpml">
+                  <i class="fa-solid fa-file-import"></i>
+                  Import OPML
+                </button>
+              </form>
+
+              <form class="grid content-start gap-3 rounded-md border border-base-300 bg-base-200 p-4" @submit.prevent="importEmail">
+                <h3 class="text-lg font-semibold">
+                  <i class="fa-solid fa-envelope mr-2 text-primary"></i>
+                  E-Mail Import
+                </h3>
+                <textarea v-model="emailForm.raw" class="textarea textarea-bordered min-h-40 rounded-md bg-base-100 font-mono text-xs" required placeholder="Raw .eml" aria-label="Raw email"></textarea>
+                <button class="btn btn-primary rounded-md" type="submit" :disabled="!emailForm.raw.trim()">
+                  <i class="fa-solid fa-file-import"></i>
+                  Import
+                </button>
+              </form>
+            </div>
 
             <div class="grid content-start gap-3">
+              <article v-for="email in emails.filter((current) => current.status === 'new').slice(0, 10)" :key="email.id" class="rounded-md border border-base-300 bg-base-200 p-4">
+                <div class="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+                  <div class="min-w-0">
+                    <span class="badge badge-outline rounded-md">
+                      <i class="fa-solid fa-envelope"></i>
+                      {{ email.fromAddress || 'unknown sender' }}
+                    </span>
+                    <h3 class="mt-2 text-xl font-semibold">{{ email.subject }}</h3>
+                    <p class="mt-1 text-sm text-base-content/60">{{ email.receivedAt || 'no date' }}</p>
+                    <p class="mt-2 line-clamp-3 whitespace-pre-line text-sm text-base-content/75">{{ email.body }}</p>
+                  </div>
+                  <div class="flex flex-wrap gap-2 md:justify-end">
+                    <button class="btn btn-sm btn-primary rounded-md" type="button" @click="saveEmail(email)">
+                      <i class="fa-solid fa-inbox"></i>
+                      Source
+                    </button>
+                    <button class="btn btn-sm btn-outline rounded-md" type="button" @click="noteEmail(email)">
+                      <i class="fa-solid fa-note-sticky"></i>
+                      Note
+                    </button>
+                    <button class="btn btn-sm btn-outline rounded-md" type="button" @click="taskEmail(email)">
+                      <i class="fa-solid fa-list-check"></i>
+                      Task
+                    </button>
+                    <button class="btn btn-sm btn-ghost rounded-md" type="button" @click="ignoreEmail(email)">
+                      <i class="fa-solid fa-box-archive"></i>
+                      Ignore
+                    </button>
+                  </div>
+                </div>
+              </article>
+
+              <article v-for="item in feedItems.filter((current) => current.status === 'new').slice(0, 10)" :key="item.id" class="rounded-md border border-base-300 bg-base-200 p-4">
+                <div class="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+                  <div class="min-w-0">
+                    <span class="badge badge-outline rounded-md">
+                      <i class="fa-solid fa-rss"></i>
+                      {{ item.feedTitle }}
+                    </span>
+                    <h3 class="mt-2 text-xl font-semibold">{{ item.title }}</h3>
+                    <a class="mt-1 inline-flex max-w-full items-center gap-2 truncate text-sm text-primary" :href="item.url" target="_blank" rel="noreferrer">
+                      <i class="fa-solid fa-arrow-up-right-from-square"></i>
+                      <span class="truncate">{{ item.url }}</span>
+                    </a>
+                  </div>
+                  <div class="flex flex-wrap gap-2 md:justify-end">
+                    <button class="btn btn-sm btn-primary rounded-md" type="button" @click="saveFeedItem(item)">
+                      <i class="fa-solid fa-inbox"></i>
+                      Save
+                    </button>
+                    <button class="btn btn-sm btn-outline rounded-md" type="button" @click="noteFeedItem(item)">
+                      <i class="fa-solid fa-note-sticky"></i>
+                      Note
+                    </button>
+                    <button class="btn btn-sm btn-outline rounded-md" type="button" @click="taskFeedItem(item)">
+                      <i class="fa-solid fa-list-check"></i>
+                      Task
+                    </button>
+                    <button class="btn btn-sm btn-ghost rounded-md" type="button" @click="ignoreFeedItem(item)">
+                      <i class="fa-solid fa-box-archive"></i>
+                      Ignore
+                    </button>
+                  </div>
+                </div>
+              </article>
               <SourceCard
                 v-for="source in inboxSources"
                 :key="source.id"

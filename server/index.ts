@@ -26,6 +26,14 @@ import type { NewAssetEntry } from "../src/modules/assets/types";
 import { ensureSecondBrainRepo } from "./secondBrainRepo";
 import { syncSecondBrainNotes } from "./secondBrainImport";
 import { commitSecondBrainRepo, getSecondBrainGitStatus, pullSecondBrainRepo, pushSecondBrainRepo } from "./secondBrainGit";
+import { parseFeedItems } from "./rssParser";
+import { createRssStore } from "./rssStore";
+import type { NewFeedEntry } from "../src/modules/rss/types";
+import { parseOpmlFeeds } from "./opmlParser";
+import { refreshEnabledFeeds } from "./rssRefresh";
+import { parseEmail } from "./emailParser";
+import { createEmailStore } from "./emailStore";
+import type { EmailEntry } from "../src/modules/email/types";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const dbPath = resolve(root, "data", "chaostoolbox.sqlite");
@@ -48,7 +56,13 @@ const recipeStore = createRecipeStore(dbPath);
 const mealPlanStore = createMealPlanStore(dbPath);
 const libraryStore = createLibraryStore(dbPath);
 const assetStore = createAssetStore(dbPath);
+const rssStore = createRssStore(dbPath);
+const emailStore = createEmailStore(dbPath);
 const app = express();
+
+refreshEnabledFeeds(rssStore).catch((error) => {
+  console.warn("RSS refresh failed", error);
+});
 
 app.use(cors());
 app.use(express.json());
@@ -111,6 +125,219 @@ app.delete("/api/links/:id", (req, res) => {
     return;
   }
 
+  res.status(204).end();
+});
+
+app.get("/api/rss/feeds", (_req, res) => {
+  res.json(rssStore.listFeeds());
+});
+
+app.post("/api/rss/feeds", (req, res) => {
+  const feed = parseFeed(req.body);
+  if (!feed) {
+    res.status(400).json({ error: "title and valid feed url are required" });
+    return;
+  }
+
+  try {
+    res.status(201).json(rssStore.addFeed(feed));
+  } catch {
+    res.status(409).json({ error: "feed already exists" });
+  }
+});
+
+app.post("/api/rss/opml", (req, res) => {
+  if (typeof req.body?.opml !== "string") {
+    res.status(400).json({ error: "opml is required" });
+    return;
+  }
+
+  let created = 0;
+  let skipped = 0;
+  for (const feed of parseOpmlFeeds(req.body.opml)) {
+    try {
+      rssStore.addFeed(feed);
+      created += 1;
+    } catch {
+      skipped += 1;
+    }
+  }
+
+  res.json({ created, skipped });
+});
+
+app.get("/api/rss/items", (_req, res) => {
+  res.json(rssStore.listFeedItems());
+});
+
+app.post("/api/rss/refresh", async (_req, res) => {
+  res.json(await refreshEnabledFeeds(rssStore));
+});
+
+app.post("/api/rss/feeds/:id/fetch", async (req, res) => {
+  const id = Number(req.params.id);
+  const feed = rssStore.listFeeds().find((current) => current.id === id);
+  if (!Number.isInteger(id) || id < 1 || !feed) {
+    res.status(404).json({ error: "feed not found" });
+    return;
+  }
+
+  try {
+    const response = await fetch(feed.url);
+    if (!response.ok) {
+      res.status(400).json({ error: "feed fetch failed" });
+      return;
+    }
+
+    res.json(rssStore.upsertFeedItems(feed.id, parseFeedItems(await response.text())));
+  } catch {
+    res.status(400).json({ error: "feed fetch failed" });
+  }
+});
+
+app.post("/api/rss/items/save", (req, res) => {
+  const item = parseFeedItemSave(req.body);
+  if (!item) {
+    res.status(400).json({ error: "feedId, title and valid url are required" });
+    return;
+  }
+
+  const link = store.addLink({
+    title: item.title,
+    description: `RSS: ${item.feedTitle}`,
+    url: item.url,
+    categoryId: null,
+    tags: ["status:inbox", "rss"]
+  });
+  rssStore.markFeedItem(item.feedId, item.url, "saved");
+  res.status(201).json(link);
+});
+
+app.post("/api/rss/items/ignore", (req, res) => {
+  const item = parseFeedItemSave(req.body);
+  if (!item) {
+    res.status(400).json({ error: "feedId, title and valid url are required" });
+    return;
+  }
+
+  rssStore.markFeedItem(item.feedId, item.url, "ignored");
+  res.status(204).end();
+});
+
+app.post("/api/rss/items/note", (req, res) => {
+  const item = parseFeedItemSave(req.body);
+  if (!item) {
+    res.status(400).json({ error: "feedId, title and valid url are required" });
+    return;
+  }
+
+  const note = noteStore.addNote({
+    title: item.title,
+    body: `Source: ${item.url}\nFeed: ${item.feedTitle}`,
+    categoryId: null
+  });
+  rssStore.markFeedItem(item.feedId, item.url, "saved");
+  res.status(201).json(note);
+});
+
+app.post("/api/rss/items/task", (req, res) => {
+  const item = parseFeedItemSave(req.body);
+  if (!item) {
+    res.status(400).json({ error: "feedId, title and valid url are required" });
+    return;
+  }
+
+  const task = taskStore.addTask({
+    title: item.title,
+    notes: `${item.url}\nRSS: ${item.feedTitle}`,
+    priority: 0,
+    dueDate: null,
+    repeat: "",
+    categoryId: null,
+    tags: ["rss"],
+    steps: []
+  });
+  rssStore.markFeedItem(item.feedId, item.url, "saved");
+  res.status(201).json(task);
+});
+
+app.get("/api/email/messages", (_req, res) => {
+  res.json(emailStore.listEmails());
+});
+
+app.post("/api/email/import", (req, res) => {
+  if (typeof req.body?.raw !== "string" || req.body.raw.trim() === "") {
+    res.status(400).json({ error: "raw email is required" });
+    return;
+  }
+
+  const result = emailStore.importEmail(parseEmail(req.body.raw));
+  res.status(result.created ? 201 : 200).json(result.email);
+});
+
+app.post("/api/email/messages/:id/source", (req, res) => {
+  const email = getEmailFromRoute(req.params.id);
+  if (!email) {
+    res.status(404).json({ error: "email not found" });
+    return;
+  }
+
+  const link = store.addLink({
+    title: email.subject,
+    description: `Email: ${email.fromAddress}`,
+    url: `mailto:${email.fromAddress}`,
+    categoryId: null,
+    tags: ["status:inbox", "email"]
+  });
+  emailStore.markEmail(email.id, "saved");
+  res.status(201).json(link);
+});
+
+app.post("/api/email/messages/:id/note", (req, res) => {
+  const email = getEmailFromRoute(req.params.id);
+  if (!email) {
+    res.status(404).json({ error: "email not found" });
+    return;
+  }
+
+  const note = noteStore.addNote({
+    title: email.subject,
+    body: emailBody(email),
+    categoryId: null
+  });
+  emailStore.markEmail(email.id, "saved");
+  res.status(201).json(note);
+});
+
+app.post("/api/email/messages/:id/task", (req, res) => {
+  const email = getEmailFromRoute(req.params.id);
+  if (!email) {
+    res.status(404).json({ error: "email not found" });
+    return;
+  }
+
+  const task = taskStore.addTask({
+    title: email.subject,
+    notes: emailBody(email),
+    priority: 0,
+    dueDate: null,
+    repeat: "",
+    categoryId: null,
+    tags: ["email"],
+    steps: []
+  });
+  emailStore.markEmail(email.id, "saved");
+  res.status(201).json(task);
+});
+
+app.post("/api/email/messages/:id/ignore", (req, res) => {
+  const email = getEmailFromRoute(req.params.id);
+  if (!email) {
+    res.status(404).json({ error: "email not found" });
+    return;
+  }
+
+  emailStore.markEmail(email.id, "ignored");
   res.status(204).end();
 });
 
@@ -602,6 +829,50 @@ function parseLink(value: unknown): NewLinkEntry | null {
     categoryId: typeof body.categoryId === "number" && Number.isInteger(body.categoryId) ? body.categoryId : null,
     tags: Array.isArray(body.tags) ? body.tags.filter((tag): tag is string => typeof tag === "string") : []
   };
+}
+
+function parseFeed(value: unknown): NewFeedEntry | null {
+  const body = value as Partial<NewFeedEntry> | null;
+  if (!body || typeof body.title !== "string" || typeof body.url !== "string" || body.title.trim() === "") return null;
+
+  try {
+    new URL(body.url);
+  } catch {
+    return null;
+  }
+
+  return {
+    title: body.title.trim(),
+    url: body.url.trim(),
+    enabled: body.enabled === false ? false : true
+  };
+}
+
+function parseFeedItemSave(value: unknown): { feedId: number; feedTitle: string; title: string; url: string } | null {
+  const body = value as { feedId?: unknown; feedTitle?: unknown; title?: unknown; url?: unknown } | null;
+  if (!body || typeof body.feedId !== "number" || !Number.isInteger(body.feedId) || typeof body.title !== "string" || typeof body.url !== "string") return null;
+
+  try {
+    new URL(body.url);
+  } catch {
+    return null;
+  }
+
+  return {
+    feedId: body.feedId,
+    feedTitle: typeof body.feedTitle === "string" ? body.feedTitle : "",
+    title: body.title.trim(),
+    url: body.url.trim()
+  };
+}
+
+function getEmailFromRoute(value: string): EmailEntry | null {
+  const id = Number(value);
+  return Number.isInteger(id) && id > 0 ? emailStore.getEmail(id) : null;
+}
+
+function emailBody(email: EmailEntry): string {
+  return `From: ${email.fromAddress}\nTo: ${email.toAddress}\nDate: ${email.receivedAt ?? ""}\n\n${email.body}`;
 }
 
 function parseTask(value: unknown): NewTaskEntry | null {
