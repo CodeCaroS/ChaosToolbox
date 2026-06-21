@@ -104,3 +104,16 @@ test("second brain git reports auth and merge conflict failures", () => {
     message: "CONFLICT (content): Merge conflict"
   });
 });
+
+test("second brain git recognizes common credential prompts as auth failures", () => {
+  const messages = [
+    "fatal: could not read Password for 'https://github.com': terminal prompts disabled",
+    "remote: Invalid username or token. Password authentication is not supported for Git operations.",
+    "fatal: Authentication failed for 'https://github.com/example/repo.git/'"
+  ];
+
+  for (const message of messages) {
+    const runner: GitRunner = () => ({ ok: false, stdout: "", stderr: message, code: 128 });
+    assert.equal(pushSecondBrainRepo("repo", false, "origin", "main", runner).authRequired, true);
+  }
+});

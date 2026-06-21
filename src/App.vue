@@ -678,7 +678,14 @@ function closeInboxDetail() {
 
               <div v-if="gitStatus?.authRequired" class="alert alert-warning rounded-md">
                 <i class="fa-solid fa-key"></i>
-                <span>Git authentication is missing or rejected. Configure Git credentials for the checked-out repo, then retry push or pull.</span>
+                <div class="grid gap-2">
+                  <p>Git authentication is missing or rejected. Configure local Git credentials for data/second-brain, then retry push or pull.</p>
+                  <dl class="grid gap-1 text-sm">
+                    <div><dt class="inline font-semibold">Remote:</dt> <dd class="inline">{{ gitForm.remote || 'default' }}</dd></div>
+                    <div><dt class="inline font-semibold">Branch:</dt> <dd class="inline">{{ gitForm.branch || gitStatus.branch || 'default' }}</dd></div>
+                  </dl>
+                  <pre v-if="gitStatus.message" class="max-h-28 overflow-auto rounded-md bg-base-300 p-2 text-xs whitespace-pre-wrap">{{ gitStatus.message }}</pre>
+                </div>
               </div>
               <div v-if="gitStatus?.conflicts" class="alert alert-error rounded-md">
                 <i class="fa-solid fa-code-merge"></i>

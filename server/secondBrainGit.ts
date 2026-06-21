@@ -134,7 +134,7 @@ function parseRemotes(value: string): GitRemote[] {
 }
 
 function needsAuth(message: string): boolean {
-  return /authentication failed|could not read username|permission denied|repository not found/i.test(message);
+  return /authentication failed|could not read (username|password)|permission denied|repository not found|invalid username or token|password authentication is not supported|terminal prompts disabled/i.test(message);
 }
 
 function hasConflict(message: string): boolean {
