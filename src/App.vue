@@ -486,6 +486,10 @@ async function toggleTask(task: TaskEntry) {
 }
 
 async function syncSecondBrain() {
+  if (gitStatus.value?.authRequired) {
+    gitResult.value = "Configure Git credentials first (authentication required).";
+    return;
+  }
   if (gitStatus.value?.conflicts) {
     gitResult.value = "Resolve existing merge conflicts before syncing.";
     return;
@@ -496,10 +500,18 @@ async function syncSecondBrain() {
 }
 
 async function commitSecondBrain() {
+  if (gitStatus.value?.authRequired) {
+    gitResult.value = "Configure Git credentials first (authentication required).";
+    return;
+  }
   await runGitAction("/api/second-brain/git/commit", { message: gitForm.message });
 }
 
 async function pullSecondBrain() {
+  if (gitStatus.value?.authRequired) {
+    gitResult.value = "Configure Git credentials first (authentication required).";
+    return;
+  }
   if (gitStatus.value?.conflicts) {
     gitResult.value = "Resolve merge conflicts before pull.";
     return;
@@ -510,6 +522,10 @@ async function pullSecondBrain() {
 }
 
 async function pushSecondBrain(force: boolean) {
+  if (gitStatus.value?.authRequired) {
+    gitResult.value = "Configure Git credentials first (authentication required).";
+    return;
+  }
   if (gitStatus.value?.conflicts) {
     gitResult.value = "Resolve merge conflicts before push.";
     return;
@@ -733,19 +749,19 @@ function closeInboxDetail() {
               </div>
 
               <div class="flex flex-wrap gap-2">
-                <button class="btn btn-outline rounded-md" type="button" :disabled="gitBusy || gitStatus?.conflicts" @click="syncSecondBrain">
+                <button class="btn btn-outline rounded-md" type="button" :disabled="gitBusy || gitStatus?.conflicts || gitStatus?.authRequired" @click="syncSecondBrain">
                   <i class="fa-solid fa-rotate"></i>
                   Sync
                 </button>
-                <button class="btn btn-primary rounded-md" type="button" :disabled="gitBusy || gitStatus?.conflicts" @click="commitSecondBrain">
+                <button class="btn btn-primary rounded-md" type="button" :disabled="gitBusy || gitStatus?.conflicts || gitStatus?.authRequired" @click="commitSecondBrain">
                   <i class="fa-solid fa-floppy-disk"></i>
                   Commit
                 </button>
-                <button class="btn btn-outline rounded-md" type="button" :disabled="gitBusy || gitStatus?.conflicts" @click="pullSecondBrain">
+                <button class="btn btn-outline rounded-md" type="button" :disabled="gitBusy || gitStatus?.conflicts || gitStatus?.authRequired" @click="pullSecondBrain">
                   <i class="fa-solid fa-code-pull-request"></i>
                   Pull merge
                 </button>
-                <button class="btn btn-outline rounded-md" type="button" :disabled="gitBusy || gitStatus?.conflicts" @click="pushSecondBrain(false)">
+                <button class="btn btn-outline rounded-md" type="button" :disabled="gitBusy || gitStatus?.conflicts || gitStatus?.authRequired" @click="pushSecondBrain(false)">
                   <i class="fa-solid fa-upload"></i>
                   Push
                 </button>
@@ -756,7 +772,7 @@ function closeInboxDetail() {
                   <input v-model="forcePushConfirmed" type="checkbox" class="checkbox checkbox-warning" aria-label="Confirm force push">
                   <span class="label-text">Confirm force-with-lease push</span>
                 </label>
-                <button class="btn btn-warning rounded-md sm:ml-auto" type="button" :disabled="gitBusy || !forcePushConfirmed || gitStatus?.conflicts" @click="pushSecondBrain(true)">
+                <button class="btn btn-warning rounded-md sm:ml-auto" type="button" :disabled="gitBusy || !forcePushConfirmed || gitStatus?.conflicts || gitStatus?.authRequired" @click="pushSecondBrain(true)">
                   <i class="fa-solid fa-triangle-exclamation"></i>
                   Force push
                 </button>
