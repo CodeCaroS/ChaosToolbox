@@ -40,7 +40,7 @@ function parseHeaders(value: string): Map<string, string> {
 function parseBody(headers: Map<string, string>, value: string): { body: string; attachments: ParsedEmailAttachment[] } {
   const contentType = headers.get("content-type") ?? "";
   const boundary = contentType.match(/boundary="?([^";]+)"?/i)?.[1];
-  if (!boundary) return { body: decodeText(value.trim(), headers.get("content-transfer-encoding")), attachments: [] };
+  if (!boundary) return { body: decodeText(value.trim(), headers.get("content-transfer-encoding"), getCharset(contentType)), attachments: [] };
 
   let body = "";
   const attachments: ParsedEmailAttachment[] = [];
@@ -57,7 +57,7 @@ function parseBody(headers: Map<string, string>, value: string): { body: string;
       continue;
     }
     if (partContentType.toLowerCase().startsWith("text/plain")) {
-      body ||= decodeText(partBody, partHeaders.get("content-transfer-encoding"));
+      body ||= decodeText(partBody, partHeaders.get("content-transfer-encoding"), getCharset(partContentType));
     }
     if (disposition.toLowerCase().startsWith("attachment")) {
       attachments.push({
@@ -97,8 +97,12 @@ function decodeRfc2231(value: string): string {
   return /^iso-8859-1$/i.test(charset) ? bytes.toString("latin1") : bytes.toString("utf8");
 }
 
-function decodeText(value: string, encoding = ""): string {
-  if (/^base64$/i.test(encoding)) return Buffer.from(value.replace(/\s/g, ""), "base64").toString("utf8").trim();
+function getCharset(contentType: string): BufferEncoding {
+  return /charset="?iso-8859-1"?/i.test(contentType) ? "latin1" : "utf8";
+}
+
+function decodeText(value: string, encoding = "", charset: BufferEncoding = "utf8"): string {
+  if (/^base64$/i.test(encoding)) return Buffer.from(value.replace(/\s/g, ""), "base64").toString(charset).trim();
   if (!/^quoted-printable$/i.test(encoding)) return value;
 
   const bytes: number[] = [];
@@ -111,7 +115,7 @@ function decodeText(value: string, encoding = ""): string {
       bytes.push(normalized.charCodeAt(index));
     }
   }
-  return Buffer.from(bytes).toString("utf8").trim();
+  return Buffer.from(bytes).toString(charset).trim();
 }
 
 function decodeHeader(value: string): string {

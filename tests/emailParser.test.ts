@@ -169,6 +169,19 @@ test("email parser decodes quoted printable text parts", () => {
   ].join("\r\n")).body, "Grüße aus der Inbox.");
 });
 
+test("email parser decodes quoted printable latin1 text parts", () => {
+  assert.equal(parseEmail([
+    "Message-ID: <latin1@example.com>",
+    "From: Carol <carol@example.com>",
+    "To: Dev <dev@example.com>",
+    "Subject: Encoded inbox",
+    "Content-Type: text/plain; charset=iso-8859-1",
+    "Content-Transfer-Encoding: quoted-printable",
+    "",
+    "Gr=FC=DFe aus der Inbox=2E"
+  ].join("\r\n")).body, "Gr\u00fc\u00dfe aus der Inbox.");
+});
+
 test("email parser decodes base64 text body", () => {
   assert.equal(parseEmail([
     "Message-ID: <base64@example.com>",
