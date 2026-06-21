@@ -51,3 +51,16 @@ test("rss parser decodes numeric html entities", () => {
     { title: "Carol\u2019s update \u2713", url: "https://example.com/update", publishedAt: null, summary: "Done: ship it." }
   ]);
 });
+
+test("rss parser uses permalink guid when link is missing", () => {
+  assert.deepEqual(parseFeedItems(`
+    <rss><channel>
+      <item>
+        <title>Guid Item</title>
+        <guid isPermaLink="true">https://example.com/guid</guid>
+      </item>
+    </channel></rss>
+  `), [
+    { title: "Guid Item", url: "https://example.com/guid", publishedAt: null, summary: "" }
+  ]);
+});

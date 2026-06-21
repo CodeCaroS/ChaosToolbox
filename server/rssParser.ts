@@ -4,7 +4,7 @@ export function parseFeedItems(xml: string): ParsedFeedItem[] {
   const blocks = [...xml.matchAll(/<(item|entry)\b[\s\S]*?<\/\1>/gi)].map((match) => match[0]);
   return blocks.flatMap((block) => {
     const title = text(block, "title");
-    const url = text(block, "link") || atomAlternateLink(block) || attr(block, "link", "href");
+    const url = text(block, "link") || atomAlternateLink(block) || attr(block, "link", "href") || permalinkGuid(block);
     if (!title || !url) return [];
     return [{
       title,
@@ -30,6 +30,11 @@ function atomAlternateLink(block: string): string {
     .map((match) => match[0])
     .find((tag) => /\srel=["']alternate["']/i.test(tag));
   return link ? attr(link, "link", "href") : "";
+}
+
+function permalinkGuid(block: string): string {
+  const match = block.match(/<guid\b[^>]*\sisPermaLink=["']true["'][^>]*>([\s\S]*?)<\/guid>/i);
+  return match ? decode(match[1].trim()) : "";
 }
 
 function decode(value: string): string {
