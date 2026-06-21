@@ -70,3 +70,32 @@ test("email parser extracts attachment metadata and content", () => {
     contentBase64: "UERG"
   }]);
 });
+
+test("email parser decodes quoted printable text parts", () => {
+  assert.equal(parseEmail([
+    "Message-ID: <qp@example.com>",
+    "From: Carol <carol@example.com>",
+    "To: Dev <dev@example.com>",
+    "Subject: Encoded inbox",
+    "Content-Type: multipart/alternative; boundary=\"abc\"",
+    "",
+    "--abc",
+    "Content-Type: text/plain; charset=utf-8",
+    "Content-Transfer-Encoding: quoted-printable",
+    "",
+    "Gr=C3=BC=C3=9Fe aus der Inbox=2E",
+    "--abc--"
+  ].join("\r\n")).body, "Grüße aus der Inbox.");
+});
+
+test("email parser decodes base64 text body", () => {
+  assert.equal(parseEmail([
+    "Message-ID: <base64@example.com>",
+    "From: Carol <carol@example.com>",
+    "To: Dev <dev@example.com>",
+    "Subject: Encoded inbox",
+    "Content-Transfer-Encoding: base64",
+    "",
+    "SGVsbG8gaW5ib3gu"
+  ].join("\r\n")).body, "Hello inbox.");
+});

@@ -40,7 +40,7 @@ function parseHeaders(value: string): Map<string, string> {
 function parseBody(headers: Map<string, string>, value: string): { body: string; attachments: ParsedEmailAttachment[] } {
   const contentType = headers.get("content-type") ?? "";
   const boundary = contentType.match(/boundary="?([^";]+)"?/i)?.[1];
-  if (!boundary) return { body: value.trim(), attachments: [] };
+  if (!boundary) return { body: decodeText(value.trim(), headers.get("content-transfer-encoding")), attachments: [] };
 
   let body = "";
   const attachments: ParsedEmailAttachment[] = [];
@@ -50,7 +50,7 @@ function parseBody(headers: Map<string, string>, value: string): { body: string;
     const partBody = partBodyParts.join("\n\n").replace(new RegExp(`\\n?--${boundary}--\\s*$`), "").trim();
     const disposition = partHeaders.get("content-disposition") ?? "";
     if ((partHeaders.get("content-type") ?? "").toLowerCase().startsWith("text/plain")) {
-      body ||= partBody;
+      body ||= decodeText(partBody, partHeaders.get("content-transfer-encoding"));
     }
     if (disposition.toLowerCase().startsWith("attachment")) {
       attachments.push({
@@ -66,4 +66,21 @@ function parseBody(headers: Map<string, string>, value: string): { body: string;
 
 function cleanFilename(value: string): string {
   return value.replace(/[\\/]/g, "_").trim() || "attachment";
+}
+
+function decodeText(value: string, encoding = ""): string {
+  if (/^base64$/i.test(encoding)) return Buffer.from(value.replace(/\s/g, ""), "base64").toString("utf8").trim();
+  if (!/^quoted-printable$/i.test(encoding)) return value;
+
+  const bytes: number[] = [];
+  const normalized = value.replace(/=\n/g, "");
+  for (let index = 0; index < normalized.length; index += 1) {
+    if (normalized[index] === "=" && /^[0-9a-f]{2}$/i.test(normalized.slice(index + 1, index + 3))) {
+      bytes.push(Number.parseInt(normalized.slice(index + 1, index + 3), 16));
+      index += 2;
+    } else {
+      bytes.push(normalized.charCodeAt(index));
+    }
+  }
+  return Buffer.from(bytes).toString("utf8").trim();
 }
