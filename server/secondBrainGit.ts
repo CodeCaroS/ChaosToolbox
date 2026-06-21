@@ -125,12 +125,22 @@ function parseCount(line: string, key: "ahead" | "behind"): number {
 }
 
 function parseRemotes(value: string): GitRemote[] {
-  const remotes = new Map<string, string>();
+  const remotes = new Map<string, { fetch?: string; push?: string }>();
   for (const line of value.split(/\r?\n/)) {
-    const match = line.match(/^(\S+)\s+(\S+)\s+\(push\)$/);
-    if (match) remotes.set(match[1], match[2]);
+    const match = line.match(/^(\S+)\s+(\S+)\s+\((fetch|push)\)$/);
+    if (!match) continue;
+    const remote = remotes.get(match[1]) ?? {};
+    if (match[3] === "push") {
+      remote.push = match[2];
+    } else {
+      remote.fetch = match[2];
+    }
+    remotes.set(match[1], remote);
   }
-  return [...remotes].map(([name, url]) => ({ name, url }));
+  return [...remotes].map(([name, urls]) => ({
+    name,
+    url: urls.push ?? urls.fetch ?? ""
+  }));
 }
 
 function needsAuth(message: string): boolean {

@@ -54,6 +54,24 @@ test("second brain git status keeps dots in branch names", () => {
   assert.equal(getSecondBrainGitStatus("repo", runGit).branch, "release/v1.2");
 });
 
+test("second brain git status keeps remotes with only fetch URLs", () => {
+  const runGit: GitRunner = (_repo, args) => {
+    if (args[0] === "remote") {
+      return { ok: true, stdout: "origin\thttps://example.com/repo.git (fetch)\n", stderr: "", code: 0 };
+    }
+    return {
+      ok: true,
+      stdout: "## main...origin/main [ahead 0, behind 0]\n",
+      stderr: "",
+      code: 0
+    };
+  };
+
+  assert.deepEqual(getSecondBrainGitStatus("repo", runGit).remotes, [
+    { name: "origin", url: "https://example.com/repo.git" }
+  ]);
+});
+
 test("second brain git commit stages all files and uses the requested message", () => {
   const calls: string[][] = [];
   const runGit: GitRunner = (_repo, args) => {
