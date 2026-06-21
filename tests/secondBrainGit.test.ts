@@ -180,3 +180,16 @@ test("second brain git checks stderr even when stdout is present", () => {
   assert.match(result.message, /some progress output/);
   assert.match(result.message, /could not read Username/);
 });
+
+test("second brain git marks merge requirement messages as conflicts", () => {
+  const runner: GitRunner = () => ({
+    ok: false,
+    stdout: "",
+    stderr: "error: You have not concluded your merge (MERGE_HEAD exists).",
+    code: 1
+  });
+
+  const result = pullSecondBrainRepo("repo", "origin", "main", runner);
+  assert.equal(result.conflicts, true);
+  assert.equal(result.pulled, false);
+});
