@@ -12,11 +12,11 @@ test("rss store creates feeds and upserts feed items", () => {
 
   assert.deepEqual(rss.listFeeds(), [{ ...feed, enabled: true }]);
   assert.deepEqual(rss.upsertFeedItems(feed.id, [
-    { title: "First", url: "https://example.com/1", publishedAt: "2026-06-21" },
-    { title: "Second", url: "https://example.com/2", publishedAt: null }
+    { title: "First", url: "https://example.com/1", publishedAt: "2026-06-21", summary: "First summary" },
+    { title: "Second", url: "https://example.com/2", publishedAt: null, summary: "" }
   ]), { created: 2, unchanged: 0 });
   assert.deepEqual(rss.upsertFeedItems(feed.id, [
-    { title: "First", url: "https://example.com/1", publishedAt: "2026-06-21" }
+    { title: "First", url: "https://example.com/1", publishedAt: "2026-06-21", summary: "Updated summary ignored" }
   ]), { created: 0, unchanged: 1 });
 
   assert.equal(rss.markFeedItem(feed.id, "https://example.com/1", "saved"), true);
@@ -29,6 +29,7 @@ test("rss store creates feeds and upserts feed items", () => {
       title: "Second",
       url: "https://example.com/2",
       publishedAt: null,
+      summary: "",
       status: "ignored"
     },
     {
@@ -38,6 +39,7 @@ test("rss store creates feeds and upserts feed items", () => {
       title: "First",
       url: "https://example.com/1",
       publishedAt: "2026-06-21",
+      summary: "First summary",
       status: "saved"
     }
   ]);

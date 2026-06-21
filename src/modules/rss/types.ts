@@ -16,6 +16,7 @@ export type FeedItemEntry = {
   title: string;
   url: string;
   publishedAt: string | null;
+  summary: string;
   status: "new" | "saved" | "ignored";
 };
 
@@ -23,4 +24,5 @@ export type ParsedFeedItem = {
   title: string;
   url: string;
   publishedAt: string | null;
+  summary: string;
 };

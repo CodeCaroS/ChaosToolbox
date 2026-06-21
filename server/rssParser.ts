@@ -6,7 +6,12 @@ export function parseFeedItems(xml: string): ParsedFeedItem[] {
     const title = text(block, "title");
     const url = text(block, "link") || attr(block, "link", "href");
     if (!title || !url) return [];
-    return [{ title, url, publishedAt: text(block, "pubDate") || text(block, "updated") || text(block, "published") || null }];
+    return [{
+      title,
+      url,
+      publishedAt: text(block, "pubDate") || text(block, "updated") || text(block, "published") || null,
+      summary: stripTags(text(block, "description") || text(block, "summary") || text(block, "content"))
+    }];
   });
 }
 
@@ -28,4 +33,8 @@ function decode(value: string): string {
     .replace(/&gt;/g, ">")
     .replace(/&quot;/g, "\"")
     .replace(/&#39;/g, "'");
+}
+
+function stripTags(value: string): string {
+  return value.replace(/<[^>]+>/g, "").replace(/\s+/g, " ").trim();
 }

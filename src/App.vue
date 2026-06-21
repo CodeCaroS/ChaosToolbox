@@ -871,6 +871,7 @@ function hasSourceHint(note: NoteEntry) {
                       <i class="fa-solid fa-arrow-up-right-from-square"></i>
                       <span class="truncate">{{ item.url }}</span>
                     </a>
+                    <p v-if="item.summary" class="mt-2 line-clamp-3 text-sm text-base-content/75">{{ item.summary }}</p>
                   </div>
                   <div class="flex flex-wrap gap-2 md:justify-end">
                     <button class="btn btn-sm btn-primary rounded-md" type="button" @click="saveFeedItem(item)">

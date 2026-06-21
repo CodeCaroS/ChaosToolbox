@@ -19,10 +19,15 @@ export function createRssStore(filename: string) {
       title TEXT NOT NULL,
       url TEXT NOT NULL,
       published_at TEXT,
+      summary TEXT NOT NULL DEFAULT '',
       status TEXT NOT NULL DEFAULT 'new',
       UNIQUE(feed_id, url)
     );
   `);
+  const itemColumns = db.prepare("PRAGMA table_info(feed_items)").all() as Array<{ name: string }>;
+  if (!itemColumns.some((column) => column.name === "summary")) {
+    db.prepare("ALTER TABLE feed_items ADD COLUMN summary TEXT NOT NULL DEFAULT ''").run();
+  }
 
   function rowToFeed(row: unknown): FeedEntry {
     const feed = row as Omit<FeedEntry, "enabled"> & { enabled: number };
@@ -52,12 +57,12 @@ export function createRssStore(filename: string) {
   const upsertFeedItemsTx = db.transaction((feedId: number, items: ParsedFeedItem[]) => {
     const result = { created: 0, unchanged: 0 };
     const exists = db.prepare("SELECT id FROM feed_items WHERE feed_id = ? AND url = ?");
-    const insert = db.prepare("INSERT INTO feed_items (feed_id, title, url, published_at) VALUES (?, ?, ?, ?)");
+    const insert = db.prepare("INSERT INTO feed_items (feed_id, title, url, published_at, summary) VALUES (?, ?, ?, ?, ?)");
     for (const item of items) {
       if (exists.get(feedId, item.url)) {
         result.unchanged += 1;
       } else {
-        insert.run(feedId, item.title.trim(), item.url.trim(), item.publishedAt);
+        insert.run(feedId, item.title.trim(), item.url.trim(), item.publishedAt, item.summary.trim());
         result.created += 1;
       }
     }
@@ -71,7 +76,7 @@ export function createRssStore(filename: string) {
   function listFeedItems(status?: FeedItemStatus): FeedItemEntry[] {
     const query = `
       SELECT feed_items.id, feed_items.feed_id AS feedId, feeds.title AS feedTitle, feed_items.title, feed_items.url,
-        feed_items.published_at AS publishedAt, feed_items.status
+        feed_items.published_at AS publishedAt, feed_items.summary, feed_items.status
       FROM feed_items
       JOIN feeds ON feeds.id = feed_items.feed_id
       ${status ? "WHERE feed_items.status = ?" : ""}
