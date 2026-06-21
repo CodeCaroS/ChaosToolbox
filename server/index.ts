@@ -25,7 +25,7 @@ import { createAssetStore } from "./assetStore";
 import type { NewAssetEntry } from "../src/modules/assets/types";
 import { ensureSecondBrainRepo } from "./secondBrainRepo";
 import { syncSecondBrainNotes } from "./secondBrainImport";
-import { commitSecondBrainRepo, getSecondBrainGitStatus, pullSecondBrainRepo, pushSecondBrainRepo } from "./secondBrainGit";
+import { getSecondBrainGitStatus } from "./secondBrainGit";
 import { parseFeedItems } from "./rssParser";
 import { createRssStore } from "./rssStore";
 import type { NewFeedEntry } from "../src/modules/rss/types";
@@ -34,6 +34,7 @@ import { refreshEnabledFeeds } from "./rssRefresh";
 import { parseEmail } from "./emailParser";
 import { createEmailStore } from "./emailStore";
 import type { EmailEntry } from "../src/modules/email/types";
+import { createSecondBrainGitEndpointHandlers } from "./secondBrainGitEndpoints";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const dbPath = resolve(root, "data", "chaostoolbox.sqlite");
@@ -505,6 +506,8 @@ app.get("/api/notes", (_req, res) => {
   res.json(noteStore.listNotes());
 });
 
+const secondBrainGitEndpoints = createSecondBrainGitEndpointHandlers();
+
 app.post("/api/second-brain/import", (_req, res) => {
   res.json(syncSecondBrainNotes(dbPath, secondBrainPath));
 });
@@ -515,16 +518,12 @@ app.get("/api/second-brain/git/status", (_req, res) => {
 
 app.post("/api/second-brain/git/commit", (req, res) => {
   const message = typeof req.body?.message === "string" ? req.body.message : "";
-  const syncResult = syncSecondBrainNotes(dbPath, secondBrainPath);
-  const commitResult = commitSecondBrainRepo(secondBrainPath, message);
-  res.json({ ...commitResult, conflicts: commitResult.conflicts || syncResult.conflicts > 0, sync: syncResult });
+  res.json(secondBrainGitEndpoints.createCommitPayload(dbPath, secondBrainPath, message));
 });
 
 app.post("/api/second-brain/git/push", (req, res) => {
   const target = parseGitTarget(req.body);
-  const syncResult = syncSecondBrainNotes(dbPath, secondBrainPath);
-  const pushResult = pushSecondBrainRepo(secondBrainPath, false, target.remote, target.branch);
-  res.json({ ...pushResult, conflicts: pushResult.conflicts || syncResult.conflicts > 0, sync: syncResult });
+  res.json(secondBrainGitEndpoints.createPushPayload(dbPath, secondBrainPath, target.remote, target.branch));
 });
 
 app.post("/api/second-brain/git/force-push", (req, res) => {
@@ -534,16 +533,13 @@ app.post("/api/second-brain/git/force-push", (req, res) => {
   }
 
   const target = parseGitTarget(req.body);
-  const syncResult = syncSecondBrainNotes(dbPath, secondBrainPath);
-  const pushResult = pushSecondBrainRepo(secondBrainPath, true, target.remote, target.branch);
-  res.json({ ...pushResult, conflicts: pushResult.conflicts || syncResult.conflicts > 0, sync: syncResult });
+  const payload = secondBrainGitEndpoints.createForcePushPayload(dbPath, secondBrainPath, target.remote, target.branch);
+  res.json(payload);
 });
 
 app.post("/api/second-brain/git/pull", (req, res) => {
   const target = parseGitTarget(req.body);
-  const pullResult = pullSecondBrainRepo(secondBrainPath, target.remote, target.branch);
-  const syncResult = syncSecondBrainNotes(dbPath, secondBrainPath);
-  res.json({ ...pullResult, conflicts: pullResult.conflicts || syncResult.conflicts > 0, sync: syncResult });
+  res.json(secondBrainGitEndpoints.createPullPayload(dbPath, secondBrainPath, target.remote, target.branch));
 });
 
 app.post("/api/notes", (req, res) => {
