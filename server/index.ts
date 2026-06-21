@@ -541,7 +541,9 @@ app.post("/api/second-brain/git/force-push", (req, res) => {
 
 app.post("/api/second-brain/git/pull", (req, res) => {
   const target = parseGitTarget(req.body);
-  res.json(pullSecondBrainRepo(secondBrainPath, target.remote, target.branch));
+  const pullResult = pullSecondBrainRepo(secondBrainPath, target.remote, target.branch);
+  const syncResult = syncSecondBrainNotes(dbPath, secondBrainPath);
+  res.json({ ...pullResult, sync: syncResult });
 });
 
 app.post("/api/notes", (req, res) => {

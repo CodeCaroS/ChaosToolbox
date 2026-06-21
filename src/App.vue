@@ -22,6 +22,19 @@ type GitStatus = {
   authRequired: boolean;
   message: string;
 };
+type SecondBrainSyncSummary = {
+  created: number;
+  updated: number;
+  unchanged: number;
+  deleted: number;
+  written: number;
+  conflicts: number;
+};
+type GitActionPayload = {
+  message?: string;
+  sync?: unknown;
+  error?: string;
+};
 
 const links = ref<LinkEntry[]>([]);
 const notes = ref<NoteEntry[]>([]);
@@ -550,17 +563,56 @@ async function runGitAction(url: string, body: object) {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body)
     });
-    const payload = await response.json();
+    const payload = await response.json() as GitActionPayload;
     if (!response.ok) {
       gitResult.value = payload.error ?? "Git action failed.";
       return;
     }
 
-    gitResult.value = payload.message ?? JSON.stringify(payload);
+    gitResult.value = formatGitActionResult(payload);
   } finally {
     gitBusy.value = false;
     await loadGitStatus();
   }
+}
+
+function formatGitActionResult(payload: GitActionPayload): string {
+  const summary = formatSyncSummary(payload.sync);
+  const message = typeof payload.message === "string" && payload.message.trim() ? payload.message.trim() : "";
+
+  if (summary && message) {
+    return `${message}\n${summary}`;
+  }
+  if (message) {
+    return message;
+  }
+  if (summary) {
+    return summary;
+  }
+
+  return JSON.stringify(payload);
+}
+
+function formatSyncSummary(payload: unknown): string | null {
+  if (!isSecondBrainSyncSummary(payload)) {
+    return null;
+  }
+  return `Sync result: created ${payload.created}, updated ${payload.updated}, unchanged ${payload.unchanged}, deleted ${payload.deleted}, written ${payload.written}, conflicts ${payload.conflicts}`;
+}
+
+function isSecondBrainSyncSummary(value: unknown): value is SecondBrainSyncSummary {
+  if (!value || typeof value !== "object") {
+    return false;
+  }
+  const candidate = value as Record<string, unknown>;
+  return (
+    typeof candidate.created === "number" &&
+    typeof candidate.updated === "number" &&
+    typeof candidate.unchanged === "number" &&
+    typeof candidate.deleted === "number" &&
+    typeof candidate.written === "number" &&
+    typeof candidate.conflicts === "number"
+  );
 }
 
 function sourceStatus(link: LinkEntry): SourceStatus {
