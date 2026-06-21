@@ -518,6 +518,7 @@ async function commitSecondBrain() {
     return;
   }
   await runGitAction("/api/second-brain/git/commit", { message: gitForm.message });
+  await loadNotes();
 }
 
 async function pullSecondBrain() {
@@ -550,6 +551,7 @@ async function pushSecondBrain(force: boolean) {
 
   await runGitAction(force ? "/api/second-brain/git/force-push" : "/api/second-brain/git/push", force ? { ...gitTarget(), confirm: true } : gitTarget());
   forcePushConfirmed.value = false;
+  await loadNotes();
 }
 
 async function runGitAction(url: string, body: object) {
