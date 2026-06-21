@@ -24,13 +24,14 @@ export function scanSecondBrainNotes(root: string): SecondBrainNoteFile[] {
   if (!existsSync(root)) return [];
 
   return markdownFiles(root).map((path) => {
-    const markdown = parseMarkdown(readFileSync(path, "utf8").replace(/\r\n/g, "\n"));
+    const raw = readFileSync(path, "utf8").replace(/\r\n/g, "\n");
+    const markdown = parseMarkdown(raw);
     const body = markdown.body;
     return {
       path: relative(root, path).replace(/\\/g, "/"),
       title: markdown.title || titleFromMarkdown(path, body),
       body,
-      contentHash: createHash("sha256").update(body).digest("hex")
+      contentHash: createHash("sha256").update(raw).digest("hex")
     };
   });
 }
