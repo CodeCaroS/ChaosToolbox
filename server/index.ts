@@ -517,14 +517,14 @@ app.post("/api/second-brain/git/commit", (req, res) => {
   const message = typeof req.body?.message === "string" ? req.body.message : "";
   const syncResult = syncSecondBrainNotes(dbPath, secondBrainPath);
   const commitResult = commitSecondBrainRepo(secondBrainPath, message);
-  res.json({ ...commitResult, sync: syncResult });
+  res.json({ ...commitResult, conflicts: commitResult.conflicts || syncResult.conflicts > 0, sync: syncResult });
 });
 
 app.post("/api/second-brain/git/push", (req, res) => {
   const target = parseGitTarget(req.body);
   const syncResult = syncSecondBrainNotes(dbPath, secondBrainPath);
   const pushResult = pushSecondBrainRepo(secondBrainPath, false, target.remote, target.branch);
-  res.json({ ...pushResult, sync: syncResult });
+  res.json({ ...pushResult, conflicts: pushResult.conflicts || syncResult.conflicts > 0, sync: syncResult });
 });
 
 app.post("/api/second-brain/git/force-push", (req, res) => {
@@ -536,14 +536,14 @@ app.post("/api/second-brain/git/force-push", (req, res) => {
   const target = parseGitTarget(req.body);
   const syncResult = syncSecondBrainNotes(dbPath, secondBrainPath);
   const pushResult = pushSecondBrainRepo(secondBrainPath, true, target.remote, target.branch);
-  res.json({ ...pushResult, sync: syncResult });
+  res.json({ ...pushResult, conflicts: pushResult.conflicts || syncResult.conflicts > 0, sync: syncResult });
 });
 
 app.post("/api/second-brain/git/pull", (req, res) => {
   const target = parseGitTarget(req.body);
   const pullResult = pullSecondBrainRepo(secondBrainPath, target.remote, target.branch);
   const syncResult = syncSecondBrainNotes(dbPath, secondBrainPath);
-  res.json({ ...pullResult, sync: syncResult });
+  res.json({ ...pullResult, conflicts: pullResult.conflicts || syncResult.conflicts > 0, sync: syncResult });
 });
 
 app.post("/api/notes", (req, res) => {
