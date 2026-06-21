@@ -112,7 +112,7 @@ function actionResult<T extends object>(result: GitCommandResult, extra?: T): Se
 }
 
 function output(result: GitCommandResult): string {
-  return (result.stdout || result.stderr).trim();
+  return [result.stdout, result.stderr].map((value) => value.trim()).filter(Boolean).join("\n");
 }
 
 function parseBranch(line: string): string {

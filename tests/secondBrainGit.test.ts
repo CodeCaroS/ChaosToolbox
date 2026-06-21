@@ -131,3 +131,17 @@ test("second brain git recognizes common credential prompts as auth failures", (
     assert.equal(pushSecondBrainRepo("repo", false, "origin", "main", runner).authRequired, true);
   }
 });
+
+test("second brain git checks stderr even when stdout is present", () => {
+  const runner: GitRunner = () => ({
+    ok: false,
+    stdout: "some progress output",
+    stderr: "fatal: could not read Username for 'https://github.com': terminal prompts disabled",
+    code: 128
+  });
+
+  const result = pushSecondBrainRepo("repo", false, "origin", "main", runner);
+  assert.equal(result.authRequired, true);
+  assert.match(result.message, /some progress output/);
+  assert.match(result.message, /could not read Username/);
+});
