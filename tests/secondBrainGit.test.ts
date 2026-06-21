@@ -40,6 +40,20 @@ test("second brain git status parses branch, changes and conflicts", () => {
   });
 });
 
+test("second brain git status keeps dots in branch names", () => {
+  const runGit: GitRunner = (_repo, args) => {
+    if (args[0] === "remote") return { ok: true, stdout: "", stderr: "", code: 0 };
+    return {
+      ok: true,
+      stdout: "## release/v1.2...origin/release/v1.2 [ahead 1]\n",
+      stderr: "",
+      code: 0
+    };
+  };
+
+  assert.equal(getSecondBrainGitStatus("repo", runGit).branch, "release/v1.2");
+});
+
 test("second brain git commit stages all files and uses the requested message", () => {
   const calls: string[][] = [];
   const runGit: GitRunner = (_repo, args) => {

@@ -116,7 +116,7 @@ function output(result: GitCommandResult): string {
 }
 
 function parseBranch(line: string): string {
-  return line.replace(/^##\s*/, "").split(/[.\s]/)[0] || "";
+  return line.replace(/^##\s*/, "").split("...")[0].split(/\s/)[0] || "";
 }
 
 function parseCount(line: string, key: "ahead" | "behind"): number {
