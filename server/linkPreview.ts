@@ -9,6 +9,7 @@ export function parseLinkPreviewHtml(url: string, html: string): LinkPreview {
     title: firstMeta(html, ["og:title", "twitter:title"]) || titleTag(html),
     description: firstMeta(html, ["og:description", "twitter:description", "description"]),
     url,
+    categoryId: null,
     tags: (firstMeta(html, ["keywords"]) || "")
       .split(",")
       .map((tag) => decodeHtml(tag.trim()))

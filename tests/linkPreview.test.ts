@@ -22,6 +22,7 @@ test("parseLinkPreviewHtml prefers Open Graph fields and keywords", () => {
     title: "Open Graph title",
     description: "Open Graph description",
     url: "https://example.com",
+    categoryId: null,
     tags: ["Vue", "SQLite", "links"]
   });
 });

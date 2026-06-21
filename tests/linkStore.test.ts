@@ -9,6 +9,7 @@ test("link store persists links and tags in SQLite", () => {
     title: "TypeScript",
     description: "The official TypeScript documentation.",
     url: "https://www.typescriptlang.org/docs/",
+    categoryId: null,
     tags: ["TypeScript", "Documentation"]
   });
 
@@ -24,6 +25,7 @@ test("link store updates and deletes links", () => {
     title: "Old title",
     description: "Old description",
     url: "https://example.com/old",
+    categoryId: null,
     tags: ["old"]
   });
 
@@ -31,6 +33,7 @@ test("link store updates and deletes links", () => {
     title: "New title",
     description: "New description",
     url: "https://example.com/new",
+    categoryId: null,
     tags: ["new", "sqlite"]
   });
 
@@ -39,6 +42,8 @@ test("link store updates and deletes links", () => {
     title: "New title",
     description: "New description",
     url: "https://example.com/new",
+    categoryId: null,
+    categoryName: null,
     tags: ["new", "sqlite"]
   });
 

@@ -12,6 +12,6 @@ export function matchesLinkSearch(link: LinkEntry, search: string): boolean {
   const terms = splitSearchTerms(search);
   if (terms.length === 0) return true;
 
-  const haystack = [link.title, link.description, ...link.tags].join(" ").toLowerCase();
+  const haystack = [link.title, link.description, link.categoryName || "", ...link.tags].join(" ").toLowerCase();
   return terms.every((term) => haystack.includes(term));
 }

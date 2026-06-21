@@ -11,7 +11,12 @@ export function createLinkStore(filename: string, seedLinks: SeedLink[] = []) {
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       title TEXT NOT NULL,
       description TEXT NOT NULL DEFAULT '',
-      url TEXT NOT NULL
+      url TEXT NOT NULL,
+      category_id INTEGER
+    );
+    CREATE TABLE IF NOT EXISTS categories (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      name TEXT NOT NULL UNIQUE COLLATE NOCASE
     );
     CREATE TABLE IF NOT EXISTS tags (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -23,11 +28,15 @@ export function createLinkStore(filename: string, seedLinks: SeedLink[] = []) {
       PRIMARY KEY (link_id, tag_id)
     );
   `);
+  const columns = db.prepare("PRAGMA table_info(links)").all() as Array<{ name: string }>;
+  if (!columns.some((column) => column.name === "category_id")) {
+    db.prepare("ALTER TABLE links ADD COLUMN category_id INTEGER").run();
+  }
 
   const addLinkTx = db.transaction((link: NewLinkEntry) => {
     const result = db
-      .prepare("INSERT INTO links (title, description, url) VALUES (?, ?, ?)")
-      .run(link.title.trim(), link.description.trim(), link.url.trim());
+      .prepare("INSERT INTO links (title, description, url, category_id) VALUES (?, ?, ?, ?)")
+      .run(link.title.trim(), link.description.trim(), link.url.trim(), link.categoryId);
     const linkId = Number(result.lastInsertRowid);
 
     const insertTag = db.prepare("INSERT OR IGNORE INTO tags (name) VALUES (?)");
@@ -56,8 +65,8 @@ export function createLinkStore(filename: string, seedLinks: SeedLink[] = []) {
 
   const updateLinkTx = db.transaction((id: number, link: NewLinkEntry) => {
     const result = db
-      .prepare("UPDATE links SET title = ?, description = ?, url = ? WHERE id = ?")
-      .run(link.title.trim(), link.description.trim(), link.url.trim(), id);
+      .prepare("UPDATE links SET title = ?, description = ?, url = ?, category_id = ? WHERE id = ?")
+      .run(link.title.trim(), link.description.trim(), link.url.trim(), link.categoryId, id);
 
     if (result.changes === 0) return null;
     setTags(id, link.tags);
@@ -69,7 +78,14 @@ export function createLinkStore(filename: string, seedLinks: SeedLink[] = []) {
   }
 
   function getLink(id: number): LinkEntry {
-    const row = db.prepare("SELECT id, title, description, url FROM links WHERE id = ?").get(id) as LinkEntry;
+    const row = db
+      .prepare(`
+        SELECT links.id, links.title, links.description, links.url, links.category_id AS categoryId, categories.name AS categoryName
+        FROM links
+        LEFT JOIN categories ON categories.id = links.category_id
+        WHERE links.id = ?
+      `)
+      .get(id) as LinkEntry;
     return { ...row, tags: getTags(id) };
   }
 
@@ -82,7 +98,12 @@ export function createLinkStore(filename: string, seedLinks: SeedLink[] = []) {
 
   function listLinks(): LinkEntry[] {
     return db
-      .prepare("SELECT id, title, description, url FROM links ORDER BY id")
+      .prepare(`
+        SELECT links.id, links.title, links.description, links.url, links.category_id AS categoryId, categories.name AS categoryName
+        FROM links
+        LEFT JOIN categories ON categories.id = links.category_id
+        ORDER BY links.id
+      `)
       .all()
       .map((row) => {
         const link = row as Omit<LinkEntry, "tags">;
@@ -109,6 +130,7 @@ export function createLinkStore(filename: string, seedLinks: SeedLink[] = []) {
         title: link.title,
         description: link.description,
         url: link.url,
+        categoryId: null,
         tags: link.tags.map((tag) => (typeof tag === "string" ? tag : tag.name))
       });
     }

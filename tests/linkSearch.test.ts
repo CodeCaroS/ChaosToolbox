@@ -7,6 +7,8 @@ const link = {
   title: "Markdown Cheatsheet",
   description: "A collection of Markdown syntax.",
   url: "https://example.com",
+  categoryId: 1,
+  categoryName: "Documentation",
   tags: ["Markdown", "Syntax"]
 };
 
@@ -16,6 +18,7 @@ test("splitSearchTerms accepts spaces and commas", () => {
 
 test("matchesLinkSearch requires every term to match title, description, or tags", () => {
   assert.equal(matchesLinkSearch(link, "markdown syntax"), true);
+  assert.equal(matchesLinkSearch(link, "documentation"), true);
   assert.equal(matchesLinkSearch(link, "markdown react"), false);
   assert.equal(matchesLinkSearch(link, ""), true);
 });
