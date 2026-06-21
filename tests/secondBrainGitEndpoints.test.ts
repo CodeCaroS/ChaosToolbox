@@ -83,3 +83,27 @@ test("second brain git endpoints include sync result and conflict propagation on
   assert.equal(result.sync?.conflicts, 1);
   assert.equal(result.message, "pull failed");
 });
+
+test("second brain git endpoints use force mode for force push", () => {
+  const sync = () => ({
+    created: 0,
+    updated: 0,
+    unchanged: 0,
+    deleted: 0,
+    written: 0,
+    conflicts: 0
+  });
+  let pushArgs: { force: boolean; remote: string; branch: string } | null = null;
+  const push = (_repo: string, force: boolean, remote: string, branch: string) => {
+    pushArgs = { force, remote, branch };
+    return { authRequired: false, conflicts: false, message: "pushed" };
+  };
+
+  const handlers = createSecondBrainGitEndpointHandlers({
+    sync: () => sync(),
+    push
+  });
+  handlers.createForcePushPayload("db", "repo", "origin", "main");
+
+  assert.deepEqual(pushArgs, { force: true, remote: "origin", branch: "main" });
+});
