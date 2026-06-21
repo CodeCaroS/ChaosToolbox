@@ -20,6 +20,7 @@ export type SecondBrainGitStatus = {
   behind: number;
   changed: boolean;
   conflicts: boolean;
+  conflictFiles: string[];
   files: string[];
   remotes: GitRemote[];
   authRequired: boolean;
@@ -48,13 +49,15 @@ export function getSecondBrainGitStatus(repo: string, runGit: GitRunner = runGit
   const head = lines[0] ?? "";
   const rawFiles = lines.slice(1);
   const files = rawFiles.map((file) => file.trim());
+  const conflictFiles = files.filter((file) => /^(UU|AA|DD|DU|UD|UA|AU)\s/.test(file));
 
   return {
     branch: parseBranch(head),
     ahead: parseCount(head, "ahead"),
     behind: parseCount(head, "behind"),
     changed: files.length > 0,
-    conflicts: hasConflict(message) || rawFiles.some((file) => /^(UU|AA|DD|DU|UD|UA|AU)\s/.test(file.trim())),
+    conflicts: hasConflict(message) || conflictFiles.length > 0,
+    conflictFiles,
     files,
     remotes: parseRemotes(remotes.stdout),
     authRequired: needsAuth(message),

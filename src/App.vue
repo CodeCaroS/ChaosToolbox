@@ -16,6 +16,7 @@ type GitStatus = {
   behind: number;
   changed: boolean;
   conflicts: boolean;
+  conflictFiles: string[];
   files: string[];
   remotes: Array<{ name: string; url: string }>;
   authRequired: boolean;
@@ -681,7 +682,12 @@ function closeInboxDetail() {
               </div>
               <div v-if="gitStatus?.conflicts" class="alert alert-error rounded-md">
                 <i class="fa-solid fa-code-merge"></i>
-                <span>Merge conflicts need manual resolution in data/second-brain before the next sync or push.</span>
+                <div>
+                  <p>Merge conflicts need manual resolution in data/second-brain before the next sync or push.</p>
+                  <div v-if="gitStatus.conflictFiles.length" class="mt-2 grid gap-1 font-mono text-xs">
+                    <span v-for="file in gitStatus.conflictFiles" :key="file">{{ file }}</span>
+                  </div>
+                </div>
               </div>
 
               <label class="form-control">

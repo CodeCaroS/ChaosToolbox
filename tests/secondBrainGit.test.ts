@@ -29,6 +29,7 @@ test("second brain git status parses branch, changes and conflicts", () => {
     behind: 2,
     changed: true,
     conflicts: true,
+    conflictFiles: ["UU conflict.md"],
     files: ["M README.md", "UU conflict.md"],
     remotes: [
       { name: "origin", url: "https://example.com/repo.git" },
