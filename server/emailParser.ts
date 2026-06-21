@@ -43,6 +43,7 @@ function parseBody(headers: Map<string, string>, value: string): { body: string;
   if (!boundary) return { body: decodeText(value.trim(), headers.get("content-transfer-encoding"), getCharset(contentType)), attachments: [] };
 
   let body = "";
+  let htmlBody = "";
   const attachments: ParsedEmailAttachment[] = [];
   for (const part of value.split(`--${boundary}`)) {
     const [partHeaderText, ...partBodyParts] = part.replace(/^\n/, "").split(/\n\n/);
@@ -59,6 +60,9 @@ function parseBody(headers: Map<string, string>, value: string): { body: string;
     if (partContentType.toLowerCase().startsWith("text/plain")) {
       body ||= decodeText(partBody, partHeaders.get("content-transfer-encoding"), getCharset(partContentType));
     }
+    if (partContentType.toLowerCase().startsWith("text/html")) {
+      htmlBody ||= stripHtml(decodeText(partBody, partHeaders.get("content-transfer-encoding"), getCharset(partContentType)));
+    }
     if (disposition.toLowerCase().startsWith("attachment")) {
       attachments.push({
         filename: cleanFilename(parseFilename(disposition)),
@@ -68,7 +72,7 @@ function parseBody(headers: Map<string, string>, value: string): { body: string;
     }
   }
 
-  return { body: body || value.trim(), attachments };
+  return { body: body || htmlBody || value.trim(), attachments };
 }
 
 function cleanFilename(value: string): string {
@@ -99,6 +103,10 @@ function decodeRfc2231(value: string): string {
 
 function getCharset(contentType: string): BufferEncoding {
   return /charset="?iso-8859-1"?/i.test(contentType) ? "latin1" : "utf8";
+}
+
+function stripHtml(value: string): string {
+  return value.replace(/<[^>]+>/g, "").replace(/\s+/g, " ").trim();
 }
 
 function decodeText(value: string, encoding = "", charset: BufferEncoding = "utf8"): string {

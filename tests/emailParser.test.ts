@@ -91,6 +91,22 @@ test("email parser prefers multipart text plain body", () => {
   ].join("\r\n")).body, "Keep plain text.");
 });
 
+test("email parser falls back to html text when no plain body exists", () => {
+  assert.equal(parseEmail([
+    "Message-ID: <html-only@example.com>",
+    "From: Carol <carol@example.com>",
+    "To: Dev <dev@example.com>",
+    "Subject: HTML inbox",
+    "Content-Type: multipart/alternative; boundary=\"abc\"",
+    "",
+    "--abc",
+    "Content-Type: text/html; charset=utf-8",
+    "",
+    "<p>Hello <strong>HTML</strong> inbox.</p>",
+    "--abc--"
+  ].join("\r\n")).body, "Hello HTML inbox.");
+});
+
 test("email parser extracts attachment metadata and content", () => {
   const parsed = parseEmail([
     "Message-ID: <attachment@example.com>",
