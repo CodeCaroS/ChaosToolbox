@@ -148,5 +148,5 @@ function needsAuth(message: string): boolean {
 }
 
 function hasConflict(message: string): boolean {
-  return /conflict|automatic merge failed|unmerged|need(?:s)? to.*merge|local changes would be overwritten/i.test(message);
+  return /conflict|automatic merge failed|unmerged|need(?:s)? to.*merge|local changes would be overwritten|not concluded your merge|merge_head exists|MERGE_HEAD/i.test(message);
 }
