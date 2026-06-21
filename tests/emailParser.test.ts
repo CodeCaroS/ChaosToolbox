@@ -119,6 +119,39 @@ test("email parser extracts attachment metadata and content", () => {
   }]);
 });
 
+test("email parser reads text from nested multipart parts", () => {
+  const parsed = parseEmail([
+    "Message-ID: <nested@example.com>",
+    "From: Carol <carol@example.com>",
+    "To: Dev <dev@example.com>",
+    "Subject: Nested inbox",
+    "Content-Type: multipart/mixed; boundary=\"outer\"",
+    "",
+    "--outer",
+    "Content-Type: multipart/alternative; boundary=\"inner\"",
+    "",
+    "--inner",
+    "Content-Type: text/html",
+    "",
+    "<p>Ignore html.</p>",
+    "--inner",
+    "Content-Type: text/plain",
+    "",
+    "Keep nested plain text.",
+    "--inner--",
+    "--outer",
+    "Content-Type: application/pdf",
+    "Content-Disposition: attachment; filename=\"plan.pdf\"",
+    "Content-Transfer-Encoding: base64",
+    "",
+    "UERG",
+    "--outer--"
+  ].join("\r\n"));
+
+  assert.equal(parsed.body, "Keep nested plain text.");
+  assert.equal(parsed.attachments?.[0]?.filename, "plan.pdf");
+});
+
 test("email parser decodes quoted printable text parts", () => {
   assert.equal(parseEmail([
     "Message-ID: <qp@example.com>",

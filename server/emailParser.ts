@@ -49,13 +49,20 @@ function parseBody(headers: Map<string, string>, value: string): { body: string;
     const partHeaders = parseHeaders(partHeaderText);
     const partBody = partBodyParts.join("\n\n").replace(new RegExp(`\\n?--${boundary}--\\s*$`), "").trim();
     const disposition = partHeaders.get("content-disposition") ?? "";
-    if ((partHeaders.get("content-type") ?? "").toLowerCase().startsWith("text/plain")) {
+    const partContentType = partHeaders.get("content-type") ?? "";
+    if (partContentType.toLowerCase().startsWith("multipart/")) {
+      const nested = parseBody(partHeaders, partBody);
+      body ||= nested.body;
+      attachments.push(...nested.attachments);
+      continue;
+    }
+    if (partContentType.toLowerCase().startsWith("text/plain")) {
       body ||= decodeText(partBody, partHeaders.get("content-transfer-encoding"));
     }
     if (disposition.toLowerCase().startsWith("attachment")) {
       attachments.push({
         filename: cleanFilename(parseFilename(disposition)),
-        contentType: (partHeaders.get("content-type") ?? "application/octet-stream").split(";")[0].trim(),
+        contentType: (partContentType || "application/octet-stream").split(";")[0].trim(),
         contentBase64: partBody.replace(/\s/g, "")
       });
     }
