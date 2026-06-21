@@ -37,3 +37,17 @@ test("rss parser prefers atom alternate links over enclosures", () => {
     { title: "Atom Media", url: "https://example.com/post", publishedAt: null, summary: "" }
   ]);
 });
+
+test("rss parser decodes numeric html entities", () => {
+  assert.deepEqual(parseFeedItems(`
+    <rss><channel>
+      <item>
+        <title>Carol&#8217;s update &#x2713;</title>
+        <link>https://example.com/update</link>
+        <description>Done&#58; ship it.</description>
+      </item>
+    </channel></rss>
+  `), [
+    { title: "Carol\u2019s update \u2713", url: "https://example.com/update", publishedAt: null, summary: "Done: ship it." }
+  ]);
+});
