@@ -151,6 +151,30 @@ test("email parser extracts attachment metadata and content", () => {
   }]);
 });
 
+test("email parser uses content type name for attachment filenames", () => {
+  const parsed = parseEmail([
+    "Message-ID: <attachment-name@example.com>",
+    "From: Carol <carol@example.com>",
+    "To: Dev <dev@example.com>",
+    "Subject: Attachment inbox",
+    "Content-Type: multipart/mixed; boundary=\"abc\"",
+    "",
+    "--abc",
+    "Content-Type: text/plain",
+    "",
+    "See attachment.",
+    "--abc",
+    "Content-Type: application/pdf; name=\"plan.pdf\"",
+    "Content-Disposition: attachment",
+    "Content-Transfer-Encoding: base64",
+    "",
+    "UERG",
+    "--abc--"
+  ].join("\r\n"));
+
+  assert.equal(parsed.attachments?.[0]?.filename, "plan.pdf");
+});
+
 test("email parser reads text from nested multipart parts", () => {
   const parsed = parseEmail([
     "Message-ID: <nested@example.com>",

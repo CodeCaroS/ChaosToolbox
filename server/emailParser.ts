@@ -65,7 +65,7 @@ function parseBody(headers: Map<string, string>, value: string): { body: string;
     }
     if (disposition.toLowerCase().startsWith("attachment")) {
       attachments.push({
-        filename: cleanFilename(parseFilename(disposition)),
+        filename: cleanFilename(parseFilename(disposition, partContentType)),
         contentType: (partContentType || "application/octet-stream").split(";")[0].trim(),
         contentBase64: partBody.replace(/\s/g, "")
       });
@@ -79,7 +79,7 @@ function cleanFilename(value: string): string {
   return value.replace(/[\\/]/g, "_").trim() || "attachment";
 }
 
-function parseFilename(disposition: string): string {
+function parseFilename(disposition: string, contentType = ""): string {
   const segments = [...disposition.matchAll(/filename\*(\d+)\*?=([^;]+)/gi)]
     .map((match) => ({ index: Number(match[1]), value: match[2].trim().replace(/^"|"$/g, "") }))
     .sort((left, right) => left.index - right.index);
@@ -90,7 +90,7 @@ function parseFilename(disposition: string): string {
 
   const encoded = disposition.match(/filename\*=([^;]+)/i)?.[1]?.trim().replace(/^"|"$/g, "");
   if (encoded) return decodeRfc2231(encoded);
-  return decodeHeader(disposition.match(/filename="?([^";]+)"?/i)?.[1] ?? "attachment");
+  return decodeHeader(disposition.match(/filename="?([^";]+)"?/i)?.[1] ?? contentType.match(/name="?([^";]+)"?/i)?.[1] ?? "attachment");
 }
 
 function decodeRfc2231(value: string): string {
