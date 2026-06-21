@@ -1,11 +1,11 @@
 import { createHash } from "node:crypto";
-import type { ParsedEmail } from "../src/modules/email/types";
+import type { ParsedEmail, ParsedEmailAttachment } from "../src/modules/email/types";
 
 export function parseEmail(raw: string): ParsedEmail {
   const normalized = raw.replace(/\r\n/g, "\n").replace(/\r/g, "\n");
   const [headerText, ...bodyParts] = normalized.split(/\n\n/);
   const headers = parseHeaders(headerText);
-  const body = extractBody(headers, bodyParts.join("\n\n"));
+  const parsedBody = parseBody(headers, bodyParts.join("\n\n"));
 
   return {
     messageId: headers.get("message-id") ?? `sha256:${createHash("sha256").update(raw).digest("hex")}`,
@@ -13,7 +13,8 @@ export function parseEmail(raw: string): ParsedEmail {
     toAddress: headers.get("to") ?? "",
     subject: headers.get("subject") ?? "(no subject)",
     receivedAt: headers.get("date") ?? null,
-    body
+    body: parsedBody.body,
+    attachments: parsedBody.attachments
   };
 }
 
@@ -36,18 +37,33 @@ function parseHeaders(value: string): Map<string, string> {
   return headers;
 }
 
-function extractBody(headers: Map<string, string>, value: string): string {
+function parseBody(headers: Map<string, string>, value: string): { body: string; attachments: ParsedEmailAttachment[] } {
   const contentType = headers.get("content-type") ?? "";
   const boundary = contentType.match(/boundary="?([^";]+)"?/i)?.[1];
-  if (!boundary) return value.trim();
+  if (!boundary) return { body: value.trim(), attachments: [] };
 
+  let body = "";
+  const attachments: ParsedEmailAttachment[] = [];
   for (const part of value.split(`--${boundary}`)) {
     const [partHeaderText, ...partBodyParts] = part.replace(/^\n/, "").split(/\n\n/);
     const partHeaders = parseHeaders(partHeaderText);
+    const partBody = partBodyParts.join("\n\n").replace(new RegExp(`\\n?--${boundary}--\\s*$`), "").trim();
+    const disposition = partHeaders.get("content-disposition") ?? "";
     if ((partHeaders.get("content-type") ?? "").toLowerCase().startsWith("text/plain")) {
-      return partBodyParts.join("\n\n").replace(new RegExp(`\\n?--${boundary}--\\s*$`), "").trim();
+      body ||= partBody;
+    }
+    if (disposition.toLowerCase().startsWith("attachment")) {
+      attachments.push({
+        filename: cleanFilename(disposition.match(/filename="?([^";]+)"?/i)?.[1] ?? "attachment"),
+        contentType: (partHeaders.get("content-type") ?? "application/octet-stream").split(";")[0].trim(),
+        contentBase64: partBody.replace(/\s/g, "")
+      });
     }
   }
 
-  return value.trim();
+  return { body: body || value.trim(), attachments };
+}
+
+function cleanFilename(value: string): string {
+  return value.replace(/[\\/]/g, "_").trim() || "attachment";
 }

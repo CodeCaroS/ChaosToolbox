@@ -341,6 +341,20 @@ app.post("/api/email/messages/:id/ignore", (req, res) => {
   res.status(204).end();
 });
 
+app.get("/api/email/messages/:id/attachments/:attachmentId", (req, res) => {
+  const email = getEmailFromRoute(req.params.id);
+  const attachmentId = Number(req.params.attachmentId);
+  const attachment = email?.attachments.find((current) => current.id === attachmentId);
+  if (!email || !attachment) {
+    res.status(404).json({ error: "attachment not found" });
+    return;
+  }
+
+  res.type(attachment.contentType);
+  res.setHeader("Content-Disposition", `attachment; filename="${attachment.filename.replace(/"/g, "")}"`);
+  res.send(Buffer.from(attachment.contentBase64, "base64"));
+});
+
 app.get("/api/tasks", (_req, res) => {
   res.json(taskStore.listTasks());
 });

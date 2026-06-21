@@ -7,6 +7,19 @@ export type EmailEntry = {
   receivedAt: string | null;
   body: string;
   status: "new" | "saved" | "ignored";
+  attachments: EmailAttachment[];
 };
 
-export type ParsedEmail = Omit<EmailEntry, "id" | "status">;
+export type EmailAttachment = {
+  id: number;
+  emailId: number;
+  filename: string;
+  contentType: string;
+  contentBase64: string;
+};
+
+export type ParsedEmailAttachment = Omit<EmailAttachment, "id" | "emailId">;
+
+export type ParsedEmail = Omit<EmailEntry, "id" | "status" | "attachments"> & {
+  attachments?: ParsedEmailAttachment[];
+};

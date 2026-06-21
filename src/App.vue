@@ -792,6 +792,17 @@ function hasSourceHint(note: NoteEntry) {
                     <h3 class="mt-2 text-xl font-semibold">{{ email.subject }}</h3>
                     <p class="mt-1 text-sm text-base-content/60">{{ email.receivedAt || 'no date' }}</p>
                     <p class="mt-2 line-clamp-3 whitespace-pre-line text-sm text-base-content/75">{{ email.body }}</p>
+                    <div v-if="email.attachments.length" class="mt-3 flex flex-wrap gap-2">
+                      <a
+                        v-for="attachment in email.attachments"
+                        :key="attachment.id"
+                        class="badge badge-outline rounded-md"
+                        :href="`/api/email/messages/${email.id}/attachments/${attachment.id}`"
+                      >
+                        <i class="fa-solid fa-paperclip"></i>
+                        {{ attachment.filename }}
+                      </a>
+                    </div>
                   </div>
                   <div class="flex flex-wrap gap-2 md:justify-end">
                     <button class="btn btn-sm btn-primary rounded-md" type="button" @click="saveEmail(email)">

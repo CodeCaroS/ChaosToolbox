@@ -18,7 +18,8 @@ test("email parser extracts common headers and text body", () => {
     toAddress: "Dev <dev@example.com>",
     subject: "Build inbox",
     receivedAt: "Sun, 21 Jun 2026 10:00:00 GMT",
-    body: "Hello inbox.\nSecond line."
+    body: "Hello inbox.\nSecond line.",
+    attachments: []
   });
 });
 
@@ -40,4 +41,32 @@ test("email parser prefers multipart text plain body", () => {
     "Keep plain text.",
     "--abc--"
   ].join("\r\n")).body, "Keep plain text.");
+});
+
+test("email parser extracts attachment metadata and content", () => {
+  const parsed = parseEmail([
+    "Message-ID: <attachment@example.com>",
+    "From: Carol <carol@example.com>",
+    "To: Dev <dev@example.com>",
+    "Subject: Attachment inbox",
+    "Content-Type: multipart/mixed; boundary=\"abc\"",
+    "",
+    "--abc",
+    "Content-Type: text/plain",
+    "",
+    "See attachment.",
+    "--abc",
+    "Content-Type: application/pdf",
+    "Content-Disposition: attachment; filename=\"plan.pdf\"",
+    "Content-Transfer-Encoding: base64",
+    "",
+    "UERG",
+    "--abc--"
+  ].join("\r\n")) as ReturnType<typeof parseEmail> & { attachments?: unknown };
+
+  assert.deepEqual(parsed.attachments, [{
+    filename: "plan.pdf",
+    contentType: "application/pdf",
+    contentBase64: "UERG"
+  }]);
 });
