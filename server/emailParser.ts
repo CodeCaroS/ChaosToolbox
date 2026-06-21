@@ -69,6 +69,14 @@ function cleanFilename(value: string): string {
 }
 
 function parseFilename(disposition: string): string {
+  const segments = [...disposition.matchAll(/filename\*(\d+)\*?=([^;]+)/gi)]
+    .map((match) => ({ index: Number(match[1]), value: match[2].trim().replace(/^"|"$/g, "") }))
+    .sort((left, right) => left.index - right.index);
+  if (segments.length > 0) {
+    const joined = segments.map((segment) => segment.value).join("");
+    return decodeRfc2231(joined.includes("''") ? joined : `utf-8''${joined}`);
+  }
+
   const encoded = disposition.match(/filename\*=([^;]+)/i)?.[1]?.trim().replace(/^"|"$/g, "");
   if (encoded) return decodeRfc2231(encoded);
   return decodeHeader(disposition.match(/filename="?([^";]+)"?/i)?.[1] ?? "attachment");

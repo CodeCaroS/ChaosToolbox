@@ -47,6 +47,30 @@ test("email parser decodes rfc2231 attachment filenames", () => {
   assert.equal(parsed.attachments?.[0]?.filename, "Plan Müller.pdf");
 });
 
+test("email parser decodes continued rfc2231 attachment filenames", () => {
+  const parsed = parseEmail([
+    "Message-ID: <filename-cont@example.com>",
+    "From: Carol <carol@example.com>",
+    "To: Dev <dev@example.com>",
+    "Subject: Attachment inbox",
+    "Content-Type: multipart/mixed; boundary=\"abc\"",
+    "",
+    "--abc",
+    "Content-Type: text/plain",
+    "",
+    "See attachment.",
+    "--abc",
+    "Content-Type: application/pdf",
+    "Content-Disposition: attachment; filename*0*=UTF-8''Plan%20; filename*1*=M%C3%BCller.pdf",
+    "Content-Transfer-Encoding: base64",
+    "",
+    "UERG",
+    "--abc--"
+  ].join("\r\n"));
+
+  assert.equal(parsed.attachments?.[0]?.filename, "Plan M\u00fcller.pdf");
+});
+
 test("email parser prefers multipart text plain body", () => {
   assert.equal(parseEmail([
     "Message-ID: <multi@example.com>",
