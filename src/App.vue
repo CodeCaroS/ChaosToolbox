@@ -9,6 +9,7 @@ import type { NewTaskEntry, TaskEntry } from "./modules/tasks/types";
 
 type ViewId = "dashboard" | "inbox" | "sources" | "notes" | "tasks" | "reviews";
 type SourceStatus = "inbox" | "keep" | "refine" | "archived";
+type InboxSelection = { kind: "email" | "rss"; id: number };
 type GitStatus = {
   branch: string;
   ahead: number;
@@ -35,6 +36,7 @@ const loading = ref(true);
 const gitBusy = ref(false);
 const gitResult = ref("");
 const forcePushConfirmed = ref(false);
+const selectedInboxItem = ref<InboxSelection | null>(null);
 
 const sourceForm = reactive({ title: "", url: "", description: "", tags: "" });
 const noteForm = reactive({ title: "", body: "" });
@@ -68,6 +70,12 @@ const openTasks = computed(() => tasks.value.filter((task) => !task.done));
 const newFeedItems = computed(() => feedItems.value.filter((item) => item.status === "new"));
 const newEmails = computed(() => emails.value.filter((email) => email.status === "new"));
 const inboxCount = computed(() => inboxSources.value.length + newFeedItems.value.length + newEmails.value.length);
+const selectedEmail = computed(() => selectedInboxItem.value?.kind === "email"
+  ? emails.value.find((email) => email.id === selectedInboxItem.value?.id && email.status === "new") ?? null
+  : null);
+const selectedFeedItem = computed(() => selectedInboxItem.value?.kind === "rss"
+  ? feedItems.value.find((item) => item.id === selectedInboxItem.value?.id && item.status === "new") ?? null
+  : null);
 const reviewItems = computed(() => [
   ...sources.value.filter((source) => source.status === "inbox").map((source) => ({
     id: `source-${source.id}`,
@@ -350,22 +358,26 @@ async function saveFeedItem(item: FeedItemEntry) {
   await actOnFeedItem("/api/rss/items/save", item, (payload) => {
     links.value.unshift(payload as LinkEntry);
   });
+  closeInboxDetail();
 }
 
 async function noteFeedItem(item: FeedItemEntry) {
   await actOnFeedItem("/api/rss/items/note", item, (payload) => {
     notes.value.unshift(payload as NoteEntry);
   });
+  closeInboxDetail();
 }
 
 async function taskFeedItem(item: FeedItemEntry) {
   await actOnFeedItem("/api/rss/items/task", item, (payload) => {
     tasks.value.unshift(payload as TaskEntry);
   });
+  closeInboxDetail();
 }
 
 async function ignoreFeedItem(item: FeedItemEntry) {
   await actOnFeedItem("/api/rss/items/ignore", item);
+  closeInboxDetail();
 }
 
 async function actOnFeedItem(url: string, item: FeedItemEntry, apply?: (payload: unknown) => void) {
@@ -404,22 +416,26 @@ async function saveEmail(email: EmailEntry) {
   await actOnEmail(`/api/email/messages/${email.id}/source`, (payload) => {
     links.value.unshift(payload as LinkEntry);
   });
+  closeInboxDetail();
 }
 
 async function noteEmail(email: EmailEntry) {
   await actOnEmail(`/api/email/messages/${email.id}/note`, (payload) => {
     notes.value.unshift(payload as NoteEntry);
   });
+  closeInboxDetail();
 }
 
 async function taskEmail(email: EmailEntry) {
   await actOnEmail(`/api/email/messages/${email.id}/task`, (payload) => {
     tasks.value.unshift(payload as TaskEntry);
   });
+  closeInboxDetail();
 }
 
 async function ignoreEmail(email: EmailEntry) {
   await actOnEmail(`/api/email/messages/${email.id}/ignore`);
+  closeInboxDetail();
 }
 
 async function actOnEmail(url: string, apply?: (payload: unknown) => void) {
@@ -533,6 +549,18 @@ function gitTarget() {
 
 function hasSourceHint(note: NoteEntry) {
   return /source|quelle|http|derived_from|supports/i.test(note.body);
+}
+
+function selectEmail(email: EmailEntry) {
+  selectedInboxItem.value = { kind: "email", id: email.id };
+}
+
+function selectFeedItem(item: FeedItemEntry) {
+  selectedInboxItem.value = { kind: "rss", id: item.id };
+}
+
+function closeInboxDetail() {
+  selectedInboxItem.value = null;
 }
 </script>
 
@@ -751,7 +779,7 @@ function hasSourceHint(note: NoteEntry) {
             </div>
           </section>
 
-          <section v-if="activeView === 'inbox'" class="grid gap-4 xl:grid-cols-[360px_1fr]">
+          <section v-if="activeView === 'inbox'" class="grid gap-4 xl:grid-cols-[360px_minmax(0,1fr)_420px]">
             <div class="grid content-start gap-4">
               <form class="grid content-start gap-3 rounded-md border border-base-300 bg-base-200 p-4" @submit.prevent="addSource">
                 <h3 class="text-lg font-semibold">
@@ -839,6 +867,10 @@ function hasSourceHint(note: NoteEntry) {
                     </div>
                   </div>
                   <div class="flex flex-wrap gap-2 md:justify-end">
+                    <button class="btn btn-sm btn-outline rounded-md" type="button" @click="selectEmail(email)">
+                      <i class="fa-solid fa-eye"></i>
+                      Open
+                    </button>
                     <button class="btn btn-sm btn-primary rounded-md" type="button" @click="saveEmail(email)">
                       <i class="fa-solid fa-inbox"></i>
                       Source
@@ -874,6 +906,10 @@ function hasSourceHint(note: NoteEntry) {
                     <p v-if="item.summary" class="mt-2 line-clamp-3 text-sm text-base-content/75">{{ item.summary }}</p>
                   </div>
                   <div class="flex flex-wrap gap-2 md:justify-end">
+                    <button class="btn btn-sm btn-outline rounded-md" type="button" @click="selectFeedItem(item)">
+                      <i class="fa-solid fa-eye"></i>
+                      Open
+                    </button>
                     <button class="btn btn-sm btn-primary rounded-md" type="button" @click="saveFeedItem(item)">
                       <i class="fa-solid fa-inbox"></i>
                       Save
@@ -902,6 +938,100 @@ function hasSourceHint(note: NoteEntry) {
                 @archive="setSourceStatus(source, 'archived')"
               />
             </div>
+
+            <aside class="grid content-start gap-3 xl:sticky xl:top-28">
+              <article v-if="selectedEmail" class="rounded-md border border-base-300 bg-base-200 p-4">
+                <div class="flex items-start justify-between gap-3">
+                  <span class="badge badge-outline rounded-md">
+                    <i class="fa-solid fa-envelope"></i>
+                    E-Mail
+                  </span>
+                  <button class="btn btn-sm btn-square btn-ghost rounded-md" type="button" aria-label="Close detail" @click="closeInboxDetail">
+                    <i class="fa-solid fa-xmark"></i>
+                  </button>
+                </div>
+                <h3 class="mt-3 text-xl font-semibold">{{ selectedEmail.subject }}</h3>
+                <dl class="mt-3 grid gap-1 text-sm text-base-content/70">
+                  <div><dt class="inline font-semibold">From:</dt> <dd class="inline">{{ selectedEmail.fromAddress || 'unknown sender' }}</dd></div>
+                  <div><dt class="inline font-semibold">To:</dt> <dd class="inline">{{ selectedEmail.toAddress || 'unknown recipient' }}</dd></div>
+                  <div><dt class="inline font-semibold">Date:</dt> <dd class="inline">{{ selectedEmail.receivedAt || 'no date' }}</dd></div>
+                </dl>
+                <p class="mt-4 max-h-[50vh] overflow-auto whitespace-pre-line rounded-md bg-base-100 p-3 text-sm leading-6">{{ selectedEmail.body }}</p>
+                <div v-if="selectedEmail.attachments.length" class="mt-3 flex flex-wrap gap-2">
+                  <a
+                    v-for="attachment in selectedEmail.attachments"
+                    :key="attachment.id"
+                    class="badge badge-outline rounded-md"
+                    :href="`/api/email/messages/${selectedEmail.id}/attachments/${attachment.id}`"
+                  >
+                    <i class="fa-solid fa-paperclip"></i>
+                    {{ attachment.filename }}
+                  </a>
+                </div>
+                <div class="mt-4 flex flex-wrap gap-2">
+                  <button class="btn btn-sm btn-primary rounded-md" type="button" @click="saveEmail(selectedEmail)">
+                    <i class="fa-solid fa-inbox"></i>
+                    Source
+                  </button>
+                  <button class="btn btn-sm btn-outline rounded-md" type="button" @click="noteEmail(selectedEmail)">
+                    <i class="fa-solid fa-note-sticky"></i>
+                    Note
+                  </button>
+                  <button class="btn btn-sm btn-outline rounded-md" type="button" @click="taskEmail(selectedEmail)">
+                    <i class="fa-solid fa-list-check"></i>
+                    Task
+                  </button>
+                  <button class="btn btn-sm btn-ghost rounded-md" type="button" @click="ignoreEmail(selectedEmail)">
+                    <i class="fa-solid fa-box-archive"></i>
+                    Ignore
+                  </button>
+                </div>
+              </article>
+
+              <article v-else-if="selectedFeedItem" class="rounded-md border border-base-300 bg-base-200 p-4">
+                <div class="flex items-start justify-between gap-3">
+                  <span class="badge badge-outline rounded-md">
+                    <i class="fa-solid fa-rss"></i>
+                    {{ selectedFeedItem.feedTitle }}
+                  </span>
+                  <button class="btn btn-sm btn-square btn-ghost rounded-md" type="button" aria-label="Close detail" @click="closeInboxDetail">
+                    <i class="fa-solid fa-xmark"></i>
+                  </button>
+                </div>
+                <h3 class="mt-3 text-xl font-semibold">{{ selectedFeedItem.title }}</h3>
+                <a class="mt-2 inline-flex max-w-full items-center gap-2 truncate text-sm text-primary" :href="selectedFeedItem.url" target="_blank" rel="noreferrer">
+                  <i class="fa-solid fa-arrow-up-right-from-square"></i>
+                  <span class="truncate">{{ selectedFeedItem.url }}</span>
+                </a>
+                <p v-if="selectedFeedItem.publishedAt" class="mt-2 text-sm text-base-content/60">{{ selectedFeedItem.publishedAt }}</p>
+                <p class="mt-4 max-h-[50vh] overflow-auto whitespace-pre-line rounded-md bg-base-100 p-3 text-sm leading-6">
+                  {{ selectedFeedItem.summary || 'No summary available.' }}
+                </p>
+                <div class="mt-4 flex flex-wrap gap-2">
+                  <button class="btn btn-sm btn-primary rounded-md" type="button" @click="saveFeedItem(selectedFeedItem)">
+                    <i class="fa-solid fa-inbox"></i>
+                    Save
+                  </button>
+                  <button class="btn btn-sm btn-outline rounded-md" type="button" @click="noteFeedItem(selectedFeedItem)">
+                    <i class="fa-solid fa-note-sticky"></i>
+                    Note
+                  </button>
+                  <button class="btn btn-sm btn-outline rounded-md" type="button" @click="taskFeedItem(selectedFeedItem)">
+                    <i class="fa-solid fa-list-check"></i>
+                    Task
+                  </button>
+                  <button class="btn btn-sm btn-ghost rounded-md" type="button" @click="ignoreFeedItem(selectedFeedItem)">
+                    <i class="fa-solid fa-box-archive"></i>
+                    Ignore
+                  </button>
+                </div>
+              </article>
+
+              <article v-else class="rounded-md border border-dashed border-base-300 bg-base-200 p-4 text-sm text-base-content/60">
+                <i class="fa-solid fa-eye mr-2"></i>
+                Select an RSS item or e-mail to inspect it.
+              </article>
+            </aside>
           </section>
 
           <section v-if="activeView === 'sources'" class="grid gap-3">
