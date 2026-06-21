@@ -517,6 +517,10 @@ async function commitSecondBrain() {
     gitResult.value = "Configure Git credentials first (authentication required).";
     return;
   }
+  if (gitStatus.value?.conflicts) {
+    gitResult.value = "Resolve merge conflicts before commit.";
+    return;
+  }
   await runGitAction("/api/second-brain/git/commit", { message: gitForm.message });
   await loadNotes();
 }
