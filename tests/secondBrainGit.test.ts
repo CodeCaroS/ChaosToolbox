@@ -93,6 +93,23 @@ test("second brain git commit stages all files and uses the requested message", 
   ]);
 });
 
+test("second brain git commit trims message and falls back to default", () => {
+  const calls: string[][] = [];
+  const runGit: GitRunner = (_repo, args) => {
+    calls.push(args);
+    if (args[0] === "diff") return { ok: false, stdout: "", stderr: "", code: 1 };
+    return { ok: true, stdout: "ok", stderr: "", code: 0 };
+  };
+
+  assert.deepEqual(commitSecondBrainRepo("repo", "   ", runGit), {
+    committed: true,
+    authRequired: false,
+    conflicts: false,
+    message: "ok"
+  });
+  assert.equal(calls.at(-1)?.[2], "Sync Second Brain");
+});
+
 test("second brain git commit skips when nothing is staged", () => {
   const calls: string[][] = [];
   const runGit: GitRunner = (_repo, args) => {
