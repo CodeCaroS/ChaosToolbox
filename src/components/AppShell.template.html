@@ -1,0 +1,451 @@
+<div class="min-h-screen bg-base-100 text-base-content">
+  <aside class="fixed inset-y-0 left-0 z-20 hidden w-64 border-r border-base-300 bg-base-200 p-4 lg:grid lg:grid-rows-[auto_1fr_auto]">
+    <h1 class="text-xl font-semibold">Chaos Toolbox</h1>
+    <nav class="mt-6 grid content-start gap-2">
+      <button
+        v-for="item in navItems"
+        :key="item.id"
+        class="btn justify-start rounded-md"
+        :class="activeView === item.id ? 'btn-primary text-primary-content' : 'btn-ghost'"
+        type="button"
+        @click="activeView = item.id"
+      >
+        <i class="fa-solid" :class="item.icon"></i>
+        {{ item.label }}
+      </button>
+    </nav>
+    <button class="btn btn-outline rounded-md" type="button" @click="toggleTheme">
+      <i class="fa-solid" :class="isDarkTheme ? 'fa-sun' : 'fa-moon'"></i>
+      Theme
+    </button>
+  </aside>
+
+  <main class="min-w-0 lg:pl-64">
+    <div class="sticky top-0 z-10 border-b border-base-300 bg-base-100/95 p-3 backdrop-blur">
+      <div class="flex flex-col gap-3 md:flex-row md:items-center">
+        <div class="min-w-0">
+          <p class="text-sm text-base-content/60">Chaos Toolbox</p>
+          <h2 class="truncate text-2xl font-semibold">{{ currentView.label }}</h2>
+        </div>
+        <label class="input input-bordered ml-auto flex min-w-0 items-center gap-2 rounded-md bg-base-100 md:w-96">
+          <i class="fa-solid fa-magnifying-glass text-base-content/50"></i>
+          <input v-model="search" class="grow" type="search" placeholder="Search" aria-label="Search" />
+        </label>
+        <details class="dropdown dropdown-end">
+          <summary class="btn btn-square btn-outline relative rounded-md list-none" aria-label="Background jobs" title="Background jobs">
+            <i class="fa-solid fa-bell"></i>
+            <span v-if="jobs.length" class="badge badge-primary badge-xs absolute -right-1 -top-1">{{ jobs.length }}</span>
+          </summary>
+          <div class="dropdown-content z-20 mt-2 grid w-80 max-w-[calc(100vw-2rem)] gap-2 rounded-md border border-base-300 bg-base-100 p-3 shadow">
+            <div class="flex items-center gap-2 text-sm font-semibold">
+              <i class="fa-solid fa-list-check text-primary"></i>
+              Background Jobs
+            </div>
+            <div v-if="jobs.length" class="grid gap-2">
+              <div v-for="job in jobs.slice(0, 6)" :key="job.id" class="grid gap-1 rounded-md bg-base-200 px-3 py-2 text-sm">
+                <div class="flex min-w-0 items-center gap-2">
+                  <i class="fa-solid" :class="job.status === 'running' ? 'fa-spinner fa-spin text-primary' : job.status === 'failed' ? 'fa-triangle-exclamation text-error' : job.status === 'succeeded' ? 'fa-check text-success' : 'fa-clock text-base-content/60'"></i>
+                  <span class="min-w-0 flex-1 truncate">{{ job.title }}</span>
+                  <span class="badge badge-outline rounded-md">{{ job.status }}</span>
+                </div>
+                <pre v-if="job.input" class="overflow-auto rounded-md bg-base-100 p-2 font-mono text-[11px] text-base-content/70">{{ JSON.stringify(job.input, null, 2) }}</pre>
+                <pre v-if="job.result" class="overflow-auto rounded-md bg-base-100 p-2 font-mono text-[11px] text-base-content/70">{{ JSON.stringify(job.result, null, 2) }}</pre>
+                <div class="flex flex-wrap gap-x-3 gap-y-1 text-xs text-base-content/60">
+                  <span>{{ job.createdAt }}</span>
+                  <span>{{ job.updatedAt }}</span>
+                  <span v-if="job.error" class="text-error">{{ job.error }}</span>
+                </div>
+                <div class="flex flex-wrap gap-2 text-xs text-base-content/50">
+                  <span v-for="line in job.logs?.slice(-3)" :key="line" class="rounded bg-base-100 px-2 py-1">{{ line }}</span>
+                </div>
+                <button v-if="job.status === 'failed'" class="btn btn-xs btn-outline justify-self-start rounded-md" type="button" @click="enqueueJob(`/api/jobs/${job.id}/retry`, {})">
+                  Retry
+                </button>
+              </div>
+            </div>
+            <p v-else class="text-sm text-base-content/60">No background jobs</p>
+          </div>
+        </details>
+        <div class="flex gap-2 lg:hidden">
+          <button
+            v-for="item in navItems"
+            :key="item.id"
+            class="btn btn-square btn-sm rounded-md"
+            :class="activeView === item.id ? 'btn-primary' : 'btn-outline'"
+            type="button"
+            :aria-label="item.label"
+            @click="activeView = item.id"
+          >
+            <i class="fa-solid" :class="item.icon"></i>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <div class="grid gap-4 p-4">
+      <div v-if="error" class="alert alert-error rounded-md">
+        <i class="fa-solid fa-triangle-exclamation"></i>
+        <span>{{ error }}</span>
+      </div>
+
+      <div v-if="loading" class="alert alert-info rounded-md">
+        <i class="fa-solid fa-spinner fa-spin"></i>
+        <span>Loading...</span>
+      </div>
+
+        <AppDashboard
+          v-if="activeView === 'dashboard'"
+          :stats="stats"
+          :inbox-sources="inboxSources"
+          :review-queue="reviewQueue"
+          :git-status="gitStatus"
+          :git-busy="gitBusy"
+          @navigate="activeView = $event"
+          @sync-git="syncSecondBrain"
+          @set-source-status="setSourceStatus"
+          @set-review-status="setReviewStatus"
+        />
+
+        <AppInbox
+          v-if="activeView === 'inbox'"
+          v-model:inbox-filter="inboxFilter"
+          v-model:inbox-sort="inboxSort"
+          :source-form="sourceForm"
+          :visible-inbox-items="visibleInboxItems"
+          :selected-email="selectedEmail"
+          :selected-feed-item="selectedFeedItem"
+          :select-email="selectEmail"
+          :select-feed-item="selectFeedItem"
+          :close-inbox-detail="closeInboxDetail"
+          :open-inbox-note="openInboxNote"
+          :save-email="saveEmail"
+          :note-email="noteEmail"
+          :task-email="taskEmail"
+          :ignore-email="ignoreEmail"
+          :save-feed-item="saveFeedItem"
+          :note-feed-item="noteFeedItem"
+          :task-feed-item="taskFeedItem"
+          :ignore-feed-item="ignoreFeedItem"
+          :import-article="importArticle"
+          :note-source="noteSource"
+          :set-source-status="setSourceStatus"
+        />
+
+        <AppGit
+          v-if="activeView === 'git'"
+          v-model:force-push-confirmed="forcePushConfirmed"
+          :git-status="gitStatus"
+          :git-form="gitForm"
+          :git-busy="gitBusy"
+          :git-result="gitResult"
+          @sync="syncSecondBrain"
+          @commit="commitSecondBrain"
+          @pull="pullSecondBrain"
+          @push="pushSecondBrain"
+        />
+
+        <section v-if="activeView === 'sources'" class="grid gap-4 xl:grid-cols-[220px_minmax(0,1fr)]">
+          <aside class="grid content-start gap-2 rounded-md border border-base-300 bg-base-200 p-2">
+            <button
+              v-for="tool in sourceTools"
+              :key="tool.id"
+              class="btn justify-start rounded-md"
+              :class="selectedSourceTool === tool.id ? 'btn-primary text-primary-content' : 'btn-ghost'"
+              type="button"
+              @click="selectedSourceTool = tool.id"
+            >
+              <i class="fa-solid" :class="tool.icon"></i>
+              {{ tool.label }}
+            </button>
+          </aside>
+
+          <div class="grid min-w-0 gap-4">
+            <form v-if="selectedSourceTool === 'links'" class="grid gap-3 rounded-md border border-base-300 bg-base-200 p-4" @submit.prevent="addSource">
+              <h3 class="text-lg font-semibold">New Link</h3>
+              <div class="grid gap-2 md:grid-cols-2">
+                <input v-model="sourceForm.title" class="input input-bordered rounded-md bg-base-100" required placeholder="Title" aria-label="Source title" />
+                <input v-model="sourceForm.url" class="input input-bordered rounded-md bg-base-100" required placeholder="URL" aria-label="Source URL" />
+              </div>
+              <textarea v-model="sourceForm.description" class="textarea textarea-bordered min-h-24 rounded-md bg-base-100" placeholder="Notes" aria-label="Source notes"></textarea>
+              <input v-model="sourceForm.tags" class="input input-bordered rounded-md bg-base-100" placeholder="tags" aria-label="Source tags" />
+              <button class="btn btn-primary rounded-md justify-self-start" type="submit">
+                <i class="fa-solid fa-plus"></i>
+                Add
+              </button>
+            </form>
+
+            <form v-if="selectedSourceTool === 'rss'" class="grid gap-3 rounded-md border border-base-300 bg-base-200 p-4" @submit.prevent="addFeed">
+              <h3 class="text-lg font-semibold">RSS Feed</h3>
+              <input v-model="feedForm.title" class="input input-bordered rounded-md bg-base-100" required placeholder="Title" aria-label="Feed title" />
+              <input v-model="feedForm.url" class="input input-bordered rounded-md bg-base-100" required placeholder="Feed URL" aria-label="Feed URL" />
+              <div class="join justify-self-start">
+                <button class="btn btn-square btn-primary join-item" type="submit" aria-label="Add feed" title="Add feed">
+                  <i class="fa-solid fa-plus"></i>
+                </button>
+                <button class="btn btn-square btn-outline join-item" type="button" aria-label="Refresh all feeds" title="Refresh all feeds" @click="refreshAllFeeds">
+                  <i class="fa-solid fa-rotate"></i>
+                </button>
+              </div>
+              <div class="grid gap-2">
+                <div v-for="feed in feeds" :key="feed.id" class="flex items-center gap-2 rounded-md border border-base-300 bg-base-100 p-2">
+                  <button class="btn btn-sm btn-outline min-w-0 flex-1 justify-start rounded-md" type="button" :disabled="!feed.enabled" @click="fetchFeed(feed)">
+                    <span class="truncate">{{ feed.title }}</span>
+                  </button>
+                  <button class="btn btn-sm btn-square rounded-md" type="button" @click="setFeedEnabled(feed, !feed.enabled)">
+                    <i class="fa-solid" :class="feed.enabled ? 'fa-pause' : 'fa-play'"></i>
+                  </button>
+                  <button class="btn btn-sm btn-square btn-ghost rounded-md" type="button" @click="deleteFeed(feed)">
+                    <i class="fa-solid fa-trash"></i>
+                  </button>
+                </div>
+              </div>
+            </form>
+
+            <form v-if="selectedSourceTool === 'opml'" class="grid gap-3 rounded-md border border-base-300 bg-base-200 p-4" @submit.prevent="importOpml">
+              <h3 class="text-lg font-semibold">OPML Import</h3>
+              <textarea v-model="opmlForm.body" class="textarea textarea-bordered min-h-56 rounded-md bg-base-100 font-mono text-xs" required placeholder="OPML import" aria-label="OPML import"></textarea>
+              <button class="btn btn-primary rounded-md justify-self-start" type="submit">Import OPML</button>
+            </form>
+
+            <form v-if="selectedSourceTool === 'email'" class="grid gap-3 rounded-md border border-base-300 bg-base-200 p-4" @submit.prevent="importEmail">
+              <h3 class="text-lg font-semibold">E-Mail Import</h3>
+              <textarea v-model="emailForm.raw" class="textarea textarea-bordered min-h-56 rounded-md bg-base-100 font-mono text-xs" required placeholder="Raw .eml" aria-label="Raw email"></textarea>
+              <button class="btn btn-primary rounded-md justify-self-start" type="submit">Import</button>
+            </form>
+
+            <form v-if="selectedSourceTool === 'tiktok'" class="grid gap-3 rounded-md border border-base-300 bg-base-200 p-4" @submit.prevent="createTikTokNote">
+              <h3 class="text-lg font-semibold">TikTok Note</h3>
+              <input v-model="tiktokNoteForm.url" class="input input-bordered rounded-md bg-base-100" required placeholder="TikTok URL" aria-label="TikTok URL" />
+              <button class="btn btn-primary rounded-md justify-self-start" type="submit" :disabled="tiktokNoteBusy">
+                <i class="fa-solid" :class="tiktokNoteBusy ? 'fa-spinner fa-spin' : 'fa-wand-magic-sparkles'"></i>
+                Create note
+              </button>
+              <p v-if="gitResult" class="rounded-md bg-base-100 p-3 text-sm">{{ gitResult }}</p>
+            </form>
+
+
+            <section v-if="selectedSourceTool === 'links'" class="grid gap-3 xl:grid-cols-[minmax(280px,360px)_minmax(0,1fr)]">
+              <div class="source-link-list grid content-start gap-2">
+                <button
+                  v-for="source in filteredSources"
+                  :key="source.id"
+                  class="btn h-auto justify-start rounded-md border-base-300 bg-base-200 p-3 text-left"
+                  :class="selectedSourceLinkId === source.id ? 'btn-primary text-primary-content' : 'btn-outline'"
+                  type="button"
+                  @click="selectedSourceLinkId = source.id"
+                >
+                  <span class="min-w-0">
+                    <span class="block truncate font-semibold">{{ source.title }}</span>
+                    <span class="block truncate text-xs opacity-70">{{ sourceDomain(source.url) }}</span>
+                  </span>
+                </button>
+              </div>
+
+              <article v-if="selectedSourceLink" class="source-link-detail grid min-w-0 gap-3 rounded-md border border-base-300 bg-base-200 p-4">
+                <form v-if="editingSourceLinkId === selectedSourceLink.id" class="grid gap-3" @submit.prevent="updateSource(selectedSourceLink)">
+                  <input v-model="sourceEditForm.title" class="input input-bordered rounded-md bg-base-100" required placeholder="Title" aria-label="Edit source title" />
+                  <input v-model="sourceEditForm.url" class="input input-bordered rounded-md bg-base-100" required placeholder="URL" aria-label="Edit source URL" />
+                  <textarea v-model="sourceEditForm.description" class="textarea textarea-bordered min-h-28 rounded-md bg-base-100" placeholder="Notes" aria-label="Edit source notes"></textarea>
+                  <input v-model="sourceEditForm.tags" class="input input-bordered rounded-md bg-base-100" placeholder="tags" aria-label="Edit source tags" />
+                  <div class="join justify-self-end">
+                    <button class="btn btn-square btn-outline join-item" type="button" :disabled="sourcePreviewBusy || !sourceEditForm.url.trim()" aria-label="Suggest tags" title="Suggest tags" @click="suggestSourceTags">
+                      <i class="fa-solid fa-wand-magic-sparkles"></i>
+                    </button>
+                    <button class="btn btn-square btn-outline join-item" type="button" aria-label="Cancel source edit" title="Cancel" @click="cancelEditSource">
+                      <i class="fa-solid fa-xmark"></i>
+                    </button>
+                    <button class="btn btn-square btn-primary join-item" type="submit" aria-label="Save source" title="Save">
+                      <i class="fa-solid fa-floppy-disk"></i>
+                    </button>
+                  </div>
+                </form>
+                <div v-else class="grid gap-3">
+                  <div class="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+                    <div class="min-w-0">
+                      <span class="badge rounded-md" :class="selectedSourceLink.status === 'keep' ? 'badge-primary' : 'badge-outline'">{{ selectedSourceLink.status }}</span>
+                      <h3 class="mt-2 text-2xl font-semibold">{{ selectedSourceLink.title }}</h3>
+                      <a class="mt-2 inline-flex max-w-full items-center gap-2 truncate text-sm text-primary" :href="selectedSourceLink.url" target="_blank" rel="noreferrer">
+                        <span class="truncate">{{ selectedSourceLink.url }}</span>
+                      </a>
+                    </div>
+                    <div class="join shrink-0">
+                      <button class="btn btn-sm btn-square join-item" type="button" aria-label="Keep source" title="Keep" @click="setSourceStatus(selectedSourceLink, 'keep')">
+                        <i class="fa-solid fa-bookmark"></i>
+                      </button>
+                      <button class="btn btn-sm btn-square join-item" type="button" aria-label="Edit source" title="Edit" @click="startEditSource(selectedSourceLink)">
+                        <i class="fa-solid fa-pen"></i>
+                      </button>
+                      <button class="btn btn-sm btn-square join-item" type="button" aria-label="Archive source" title="Archive" @click="setSourceStatus(selectedSourceLink, 'archived')">
+                        <i class="fa-solid fa-box-archive"></i>
+                      </button>
+                    </div>
+                  </div>
+                  <p v-if="selectedSourceLink.description" class="leading-7 text-base-content/80">{{ selectedSourceLink.description }}</p>
+                  <div class="flex flex-wrap gap-2">
+                    <span v-for="tag in selectedSourceLink.tags.filter((current) => !current.startsWith('status:'))" :key="tag" class="badge badge-outline rounded-md">{{ tag }}</span>
+                  </div>
+                </div>
+              </article>
+            </section>
+          </div>
+        </section>
+
+        <section v-if="activeView === 'notes' || activeView === 'projects' || activeView === 'decisions'" class="grid gap-4">
+          <div class="flex flex-wrap items-center gap-2 rounded-md border border-base-300 bg-base-200 p-2">
+            <button class="btn btn-primary rounded-md" type="button" @click="openNewNoteForm">
+              <i class="fa-solid fa-plus"></i>
+              New Note
+            </button>
+            <button class="btn btn-outline rounded-md" type="button" :disabled="!noteTreeFolderPaths.length" @click="toggleWholeNoteTree">
+              {{ noteTreeAllCollapsed ? "Expand tree" : "Collapse tree" }}
+            </button>
+            <span class="badge badge-outline rounded-md">{{ currentView.label }}</span>
+          </div>
+
+          <form v-if="showNewNoteForm" class="grid gap-3 rounded-md border border-base-300 bg-base-200 p-4" @submit.prevent="addNote">
+            <div class="grid gap-2 md:grid-cols-5">
+              <input v-model="noteForm.title" class="input input-bordered input-sm rounded-md bg-base-100 md:col-span-2" required placeholder="Title" aria-label="Note title" />
+              <select v-model="noteForm.kind" class="select select-bordered select-sm rounded-md bg-base-100" aria-label="Note kind">
+                <option v-for="kind in noteKindOptions(noteForm)" :key="kind" :value="kind">{{ kind }}</option>
+              </select>
+              <select v-model="noteForm.status" class="select select-bordered select-sm rounded-md bg-base-100" aria-label="Note status">
+                <option v-for="status in noteStatuses" :key="status" :value="status">{{ status }}</option>
+              </select>
+              <input v-model="noteForm.topic" class="input input-bordered input-sm rounded-md bg-base-100" placeholder="Topic" aria-label="Note topic" />
+            </div>
+            <div class="grid gap-2 md:grid-cols-4">
+              <input v-model="noteForm.tags" class="input input-bordered input-sm rounded-md bg-base-100" placeholder="tags" aria-label="Note tags" />
+              <input v-model="noteForm.summary" class="input input-bordered input-sm rounded-md bg-base-100 md:col-span-2" placeholder="Summary" aria-label="Note summary" />
+              <textarea v-model="noteForm.extraYaml" class="textarea textarea-bordered min-h-16 rounded-md bg-base-100 font-mono text-xs" placeholder="YAML" aria-label="Extra YAML fields"></textarea>
+            </div>
+            <textarea ref="noteBodyTextarea" v-model="noteForm.body" class="textarea textarea-bordered min-h-40 rounded-md bg-base-100" placeholder="Markdown" aria-label="Note body"></textarea>
+            <div class="join justify-self-end">
+              <button class="btn btn-square btn-outline join-item" type="button" aria-label="Apply YAML frontmatter" title="YAML" @click="applyPastedFrontmatter(noteForm)">
+                <i class="fa-solid fa-code"></i>
+              </button>
+              <button class="btn btn-square btn-outline join-item" type="button" aria-label="Fix Markdown lint" title="Lint fix" @click="fixNoteMarkdown(noteForm)">
+                <i class="fa-solid fa-broom"></i>
+              </button>
+              <button class="btn btn-square btn-outline join-item" type="button" aria-label="Normalize note headers" title="Headers" @click="normalizeNoteHeaders(noteForm)">
+                <i class="fa-solid fa-heading"></i>
+              </button>
+              <button class="btn btn-square btn-outline join-item" type="button" :disabled="noteMetadataBusy || !noteForm.title.trim()" aria-label="Suggest note metadata" title="Suggest" @click="suggestNoteMetadata(noteForm)">
+                <i class="fa-solid fa-wand-magic-sparkles"></i>
+              </button>
+              <button class="btn btn-square btn-outline join-item" type="button" aria-label="Cancel new note" title="Cancel" @click="closeNewNoteForm">
+                <i class="fa-solid fa-xmark"></i>
+              </button>
+              <button class="btn btn-square btn-primary join-item" type="submit" aria-label="Add note" title="Add">
+                <i class="fa-solid fa-plus"></i>
+              </button>
+            </div>
+          </form>
+
+          <div v-else class="grid gap-3 xl:grid-cols-[280px_minmax(0,1fr)]">
+            <aside class="grid content-start gap-3">
+              <label class="input input-bordered flex items-center gap-2 rounded-md bg-base-100">
+                <i class="fa-solid fa-magnifying-glass text-base-content/50"></i>
+                <input v-model="noteTreeFilters.query" class="grow" type="search" placeholder="Search notes" aria-label="Search notes" />
+              </label>
+              <div class="grid gap-2 rounded-md border border-base-300 bg-base-200 p-2 text-sm">
+                <label class="flex items-center gap-2">
+                  <input v-model="noteTreeOptions.foldersFirst" class="checkbox checkbox-xs" type="checkbox" />
+                  <span>Folders first</span>
+                </label>
+                <label class="flex items-center gap-2">
+                  <input v-model="noteTreeOptions.showFullPath" class="checkbox checkbox-xs" type="checkbox" />
+                  <span>Full paths</span>
+                </label>
+                <label class="flex items-center gap-2">
+                  <input v-model="persistNoteTreeState" class="checkbox checkbox-xs" type="checkbox" @change="onPersistNoteTreeChange" />
+                  <span>Remember tree</span>
+                </label>
+              </div>
+              <ul v-if="notesTree.length" class="note-tree note-tree-root">
+                <NoteTreeNodeItem
+                  v-for="group in notesTree"
+                  :key="group.id"
+                  :node="group"
+                  :selected-note-id="selectedNoteId"
+                  :is-open="isGroupOpen"
+                  :open-note="openNote"
+                  :toggle-group="onGroupToggle"
+                  :has-source-hint="hasSourceHint"
+                  :show-full-path="noteTreeOptions.showFullPath"
+                />
+              </ul>
+              <p v-else class="rounded-md border border-dashed border-base-300 bg-base-200 p-3 text-sm text-base-content/70">Keine Notes gefunden.</p>
+            </aside>
+
+            <article v-if="selectedNote" class="min-w-0 rounded-md border border-base-300 bg-base-200 p-4">
+              <div class="mb-3 flex items-center justify-between gap-2">
+                <div class="min-w-0">
+                  <h3 class="truncate text-xl font-semibold">{{ selectedNote.title }}</h3>
+                  <span class="text-xs text-base-content/60">{{ selectedNote.sourcePath || selectedNote.categoryName || "Uncategorized" }}</span>
+                </div>
+                <div v-if="editingNoteId !== selectedNote.id" class="join">
+                  <button class="btn btn-square btn-outline btn-sm join-item" type="button" aria-label="Edit note" title="Edit" @click="startEditNote(selectedNote)">
+                    <i class="fa-solid fa-pen"></i>
+                  </button>
+                  <button class="btn btn-square btn-outline btn-sm join-item" type="button" aria-label="Move note" title="Move" @click="startEditNote(selectedNote)">
+                    <i class="fa-solid fa-up-down-left-right"></i>
+                  </button>
+                  <button class="btn btn-square btn-outline btn-sm join-item text-error" type="button" aria-label="Delete note" title="Delete" @click="deleteNote(selectedNote)">
+                    <i class="fa-solid fa-trash"></i>
+                  </button>
+                </div>
+              </div>
+
+              <form v-if="editingNoteId === selectedNote.id" class="grid gap-3" @submit.prevent="updateNote(selectedNote)">
+                <div class="grid gap-2 md:grid-cols-5">
+                  <input v-model="noteEditForm.title" class="input input-bordered input-sm rounded-md bg-base-100 md:col-span-2" required placeholder="Title" aria-label="Edit note title" />
+                  <select v-model="noteEditForm.kind" class="select select-bordered select-sm rounded-md bg-base-100" aria-label="Edit note kind">
+                    <option v-for="kind in noteKindOptions(noteEditForm)" :key="kind" :value="kind">{{ kind }}</option>
+                  </select>
+                  <select v-model="noteEditForm.status" class="select select-bordered select-sm rounded-md bg-base-100" aria-label="Edit note status">
+                    <option v-for="status in noteStatuses" :key="status" :value="status">{{ status }}</option>
+                  </select>
+                  <input v-model="noteEditForm.topic" class="input input-bordered input-sm rounded-md bg-base-100" placeholder="Topic" aria-label="Edit note topic" />
+                </div>
+                <div class="grid gap-2 md:grid-cols-4">
+                  <input v-model="noteEditForm.tags" class="input input-bordered input-sm rounded-md bg-base-100" placeholder="tags" aria-label="Edit note tags" />
+                  <input v-model="noteEditForm.summary" class="input input-bordered input-sm rounded-md bg-base-100 md:col-span-2" placeholder="Summary" aria-label="Edit note summary" />
+                  <textarea v-model="noteEditForm.extraYaml" class="textarea textarea-bordered min-h-16 rounded-md bg-base-100 font-mono text-xs" placeholder="YAML" aria-label="Edit extra YAML fields"></textarea>
+                </div>
+                <textarea ref="noteBodyTextarea" v-model="noteEditForm.body" class="textarea textarea-bordered min-h-80 rounded-md bg-base-100 font-mono text-sm" placeholder="Markdown" aria-label="Edit note body"></textarea>
+                <div class="join justify-self-end">
+                  <button class="btn btn-square btn-outline join-item" type="button" aria-label="Apply YAML frontmatter" title="YAML" @click="applyPastedFrontmatter(noteEditForm)">
+                    <i class="fa-solid fa-code"></i>
+                  </button>
+                  <button class="btn btn-square btn-outline join-item" type="button" aria-label="Fix Markdown lint" title="Lint fix" @click="fixNoteMarkdown(noteEditForm)">
+                    <i class="fa-solid fa-broom"></i>
+                  </button>
+                  <button class="btn btn-square btn-outline join-item" type="button" aria-label="Normalize note headers" title="Headers" @click="normalizeNoteHeaders(noteEditForm)">
+                    <i class="fa-solid fa-heading"></i>
+                  </button>
+                  <button class="btn btn-square btn-outline join-item" type="button" :disabled="noteMetadataBusy || !noteEditForm.title.trim()" aria-label="Suggest note metadata" title="Suggest" @click="suggestNoteMetadata(noteEditForm)">
+                    <i class="fa-solid fa-wand-magic-sparkles"></i>
+                  </button>
+                  <button class="btn btn-square btn-outline join-item" type="button" aria-label="Cancel note edit" title="Cancel" @click="cancelEditNote">
+                    <i class="fa-solid fa-xmark"></i>
+                  </button>
+                  <button class="btn btn-square btn-primary join-item" type="submit" aria-label="Save note" title="Save">
+                    <i class="fa-solid fa-floppy-disk"></i>
+                  </button>
+                </div>
+              </form>
+              <div v-else class="markdown-preview w-full min-w-0" v-html="selectedNoteHtml"></div>
+            </article>
+          </div>
+        </section>
+
+        <AppTasks
+          v-if="activeView === 'tasks'"
+          :task-form="taskForm"
+          :filtered-tasks="filteredTasks"
+          @add-task="addTask"
+          @toggle-task="toggleTask"
+        />
+    </div>
+  </main>
+</div>
