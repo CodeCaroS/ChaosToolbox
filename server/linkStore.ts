@@ -1,4 +1,5 @@
 import Database from "better-sqlite3";
+import { deleteArtifactForEntity, ensureArtifactCore, upsertArtifact } from "./artifactCore";
 import type { LinkEntry, NewLinkEntry } from "../src/modules/linklist/types";
 
 type SeedLink = Omit<LinkEntry, "tags"> & { tags: Array<string | { name: string }> };
@@ -6,6 +7,7 @@ type SeedLink = Omit<LinkEntry, "tags"> & { tags: Array<string | { name: string 
 export function createLinkStore(filename: string, seedLinks: SeedLink[] = []) {
   const db = new Database(filename);
   db.pragma("foreign_keys = ON");
+  ensureArtifactCore(db);
   db.exec(`
     CREATE TABLE IF NOT EXISTS links (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -48,7 +50,16 @@ export function createLinkStore(filename: string, seedLinks: SeedLink[] = []) {
       connectTag.run(linkId, (findTag.get(tag) as { id: number }).id);
     }
 
-    return getLink(linkId);
+    const saved = getLink(linkId);
+    upsertArtifact(db, {
+      entityId: saved.id,
+      entityType: "source",
+      type: "source",
+      title: saved.title,
+      status: sourceStatus(saved.tags),
+      summary: saved.description || ""
+    });
+    return saved;
   });
 
   const setTags = db.transaction((linkId: number, tags: string[]) => {
@@ -70,7 +81,16 @@ export function createLinkStore(filename: string, seedLinks: SeedLink[] = []) {
 
     if (result.changes === 0) return null;
     setTags(id, link.tags);
-    return getLink(id);
+    const updated = getLink(id);
+    upsertArtifact(db, {
+      entityId: updated.id,
+      entityType: "source",
+      type: "source",
+      title: updated.title,
+      status: sourceStatus(updated.tags),
+      summary: updated.description || ""
+    });
+    return updated;
   });
 
   function cleanTags(tags: string[]) {
@@ -120,7 +140,9 @@ export function createLinkStore(filename: string, seedLinks: SeedLink[] = []) {
   }
 
   function deleteLink(id: number): boolean {
-    return db.prepare("DELETE FROM links WHERE id = ?").run(id).changes > 0;
+    const deleted = db.prepare("DELETE FROM links WHERE id = ?").run(id).changes > 0;
+    if (deleted) deleteArtifactForEntity(db, "source", id);
+    return deleted;
   }
 
   const count = db.prepare("SELECT COUNT(*) AS count FROM links").get() as { count: number };
@@ -143,4 +165,10 @@ export function createLinkStore(filename: string, seedLinks: SeedLink[] = []) {
     updateLink,
     close: () => db.close()
   };
+}
+
+function sourceStatus(tags: string[]) {
+  const tag = tags.find((current) => current.startsWith("status:"));
+  const status = tag?.replace("status:", "");
+  return status === "keep" || status === "refine" || status === "archived" ? status : "inbox";
 }

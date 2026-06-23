@@ -1,0 +1,115 @@
+{
+  "stage": "interview",
+  "title": "Second Brain UI Rebuild",
+  "goalSlug": "secondbrain-ui-rebuild",
+  "questions": [
+    {
+      "id": "primary_direction",
+      "prompt": "Which whole-app direction should guide the rebuild?",
+      "description": "This sets the first screen and navigation priority.",
+      "answerMode": "single-custom",
+      "recommendedAnswer": "Command Center: keep existing screens, make the home screen show inbox/work status plus Second Brain Git status/actions, and promote Git to top-level navigation.",
+      "recommendedOptionIds": ["command-center"],
+      "options": [
+        {
+          "id": "command-center",
+          "label": "Command Center"
+        },
+        {
+          "id": "workflow-rails",
+          "label": "Workflow Rails"
+        },
+        {
+          "id": "notes-first",
+          "label": "Notes First"
+        }
+      ],
+      "required": true
+    },
+    {
+      "id": "scope",
+      "prompt": "What should be in scope for the first implementation pass?",
+      "description": "The smaller pass can ship quickly without backend changes.",
+      "answerMode": "multi-custom",
+      "recommendedAnswer": "Rebuild the app shell, dashboard, navigation, and Second Brain Git screen. Keep backend endpoints and existing data model unchanged.",
+      "recommendedOptionIds": ["shell", "dashboard", "git-screen", "no-backend"],
+      "options": [
+        {
+          "id": "shell",
+          "label": "App shell/navigation"
+        },
+        {
+          "id": "dashboard",
+          "label": "Dashboard/home"
+        },
+        {
+          "id": "git-screen",
+          "label": "Second Brain Git screen"
+        },
+        {
+          "id": "notes",
+          "label": "Notes layout"
+        },
+        {
+          "id": "sources",
+          "label": "Sources layout"
+        },
+        {
+          "id": "no-backend",
+          "label": "No backend changes"
+        }
+      ],
+      "required": true
+    },
+    {
+      "id": "git_flow",
+      "prompt": "How should Git actions be presented?",
+      "description": "The app currently offers Sync, Commit, Pull, Push, and guarded force push.",
+      "answerMode": "single-custom",
+      "recommendedAnswer": "Simple guided Git panel: big primary Sync button, commit message field, Pull/Commit/Push as clear actions, and force push kept behind the existing checkbox.",
+      "recommendedOptionIds": ["guided"],
+      "options": [
+        {
+          "id": "guided",
+          "label": "Guided panel"
+        },
+        {
+          "id": "power-user",
+          "label": "Power-user controls"
+        },
+        {
+          "id": "minimal",
+          "label": "Only Sync + Push"
+        }
+      ],
+      "required": true
+    },
+    {
+      "id": "success",
+      "prompt": "What should count as success?",
+      "description": "Pick the outcomes that matter most for manual and automated verification.",
+      "answerMode": "multi-custom",
+      "recommendedAnswer": "Git is reachable from top-level navigation, the dashboard shows Second Brain state, key Git actions are obvious, and existing tests/build still pass.",
+      "recommendedOptionIds": ["top-level-git", "dashboard-state", "obvious-actions", "tests-pass"],
+      "options": [
+        {
+          "id": "top-level-git",
+          "label": "Top-level Git"
+        },
+        {
+          "id": "dashboard-state",
+          "label": "Dashboard shows state"
+        },
+        {
+          "id": "obvious-actions",
+          "label": "Actions are obvious"
+        },
+        {
+          "id": "tests-pass",
+          "label": "Tests/build pass"
+        }
+      ],
+      "required": true
+    }
+  ]
+}

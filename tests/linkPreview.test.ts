@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { isBlockedPreviewUrl, parseLinkPreviewHtml } from "../server/linkPreview";
+import { extractArticleText, isBlockedPreviewUrl, parseLinkPreviewHtml } from "../server/linkPreview";
 
 test("parseLinkPreviewHtml prefers Open Graph fields and keywords", () => {
   const preview = parseLinkPreviewHtml(
@@ -31,4 +31,24 @@ test("isBlockedPreviewUrl blocks local targets", () => {
   assert.equal(isBlockedPreviewUrl("http://127.0.0.1:4174"), true);
   assert.equal(isBlockedPreviewUrl("file:///etc/passwd"), true);
   assert.equal(isBlockedPreviewUrl("https://example.com"), false);
+});
+
+test("extractArticleText prefers article body text", () => {
+  assert.equal(
+    extractArticleText(`
+      <html>
+        <body>
+          <nav>Navigation Home Search</nav>
+          <article>
+            <h1>Cloud headline</h1>
+            <p>First paragraph with useful article content.</p>
+            <script>ignored()</script>
+            <p>Second paragraph keeps the reading text.</p>
+          </article>
+          <footer>Footer links</footer>
+        </body>
+      </html>
+    `),
+    "Cloud headline\n\nFirst paragraph with useful article content.\n\nSecond paragraph keeps the reading text."
+  );
 });

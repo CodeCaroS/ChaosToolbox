@@ -1,0 +1,9 @@
+- The server is broken into smaller modules instead of keeping the whole app in `server/index.ts`.
+- The app has a shared Artifact model that covers sources, notes, tasks, emails, RSS items, assets, decisions, projects, people, and recipes.
+- Relations are first-class data, including links such as supports, derives from, depends on, mentions, belongs to, implements, blocks, and related to.
+- Global search uses SQLite FTS5 and supports saved searches and common facets across the main artifact types.
+- Review workflow is explicit, with statuses or actions for captured, triaged, extracted, connected, reviewed, committed, and archived items.
+- The app has dedicated Decision and Project modules instead of burying those concepts inside generic notes.
+- Background jobs have a detail view that exposes status, timings, input, output, logs, errors, retry, and related artifacts.
+- AI stays optional and auditable rather than becoming a required dependency for the core app.
+- Cloud sync, CRDTs, mobile, multiuser, and large automation work are deferred out of this phase.
