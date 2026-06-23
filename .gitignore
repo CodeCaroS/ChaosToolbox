@@ -4,3 +4,4 @@ data/*.sqlite
 data/*.sqlite-*
 data/second-brain/
 .env
+.superpowers/

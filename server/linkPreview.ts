@@ -17,6 +17,26 @@ export function parseLinkPreviewHtml(url: string, html: string): LinkPreview {
   };
 }
 
+export function parseLinkArticleHtml(url: string, html: string): LinkPreview {
+  const preview = parseLinkPreviewHtml(url, html);
+  return { ...preview, description: extractArticleText(html) || preview.description };
+}
+
+export function extractArticleText(html: string): string {
+  const body = html.match(/<article\b[^>]*>([\s\S]*?)<\/article>/i)?.[1] || html.match(/<main\b[^>]*>([\s\S]*?)<\/main>/i)?.[1] || html;
+  const text = decodeHtml(
+    body
+      .replace(/<script\b[\s\S]*?<\/script>/gi, "")
+      .replace(/<style\b[\s\S]*?<\/style>/gi, "")
+      .replace(/<(h[1-6]|p|li|blockquote)\b[^>]*>/gi, "\n\n")
+      .replace(/<br\s*\/?>/gi, "\n")
+      .replace(/<[^>]+>/g, " ")
+      .replace(/[ \t]+/g, " ")
+      .trim()
+  );
+  return text.split("\n").map((line) => line.trim()).filter(Boolean).join("\n\n");
+}
+
 export function isBlockedPreviewUrl(rawUrl: string): boolean {
   try {
     const url = new URL(rawUrl);
@@ -32,7 +52,7 @@ export function isBlockedPreviewUrl(rawUrl: string): boolean {
   }
 }
 
-export async function fetchLinkPreview(rawUrl: string): Promise<LinkPreview | null> {
+export async function fetchLinkPreview(rawUrl: string, options: { article?: boolean } = { article: true }): Promise<LinkPreview | null> {
   if (isBlockedPreviewUrl(rawUrl)) return null;
 
   const url = new URL(rawUrl);
@@ -46,7 +66,7 @@ export async function fetchLinkPreview(rawUrl: string): Promise<LinkPreview | nu
   if (!response.ok) return null;
 
   const html = await readLimited(response, 200_000);
-  return parseLinkPreviewHtml(url.toString(), html);
+  return options.article ? parseLinkArticleHtml(url.toString(), html) : parseLinkPreviewHtml(url.toString(), html);
 }
 
 function firstMeta(html: string, names: string[]): string {

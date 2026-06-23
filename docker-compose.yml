@@ -1,0 +1,58 @@
+services:
+  chaostoolbox-app:
+    build: .
+    container_name: chaostoolbox-app
+    restart: unless-stopped
+    env_file:
+      - .env
+    ports:
+      - "3000:3000"
+    environment:
+      NODE_ENV: production
+      HOST: 0.0.0.0
+      PORT: 3000
+      CHAOSTOOLBOX_VAULT_PATH: /app/vault
+      CHAOSTOOLBOX_SOURCES_PATH: /app/sources
+      CHAOSTOOLBOX_REVIEWS_PATH: /app/vault/06-reviews
+      CHAOSTOOLBOX_OCR_OUTPUT_PATH: /app/ocr-output
+      TYPESENSE_HOST: typesense
+      TYPESENSE_PORT: 8108
+      TYPESENSE_PROTOCOL: http
+      TYPESENSE_API_KEY: chaostoolbox-dev-key-change-me
+    volumes:
+      - ./vault:/app/vault
+      - ./sources:/app/sources
+      - ./ocr-output:/app/ocr-output
+      - ./data:/app/data
+    depends_on:
+      - ocr-worker
+      - typesense
+
+  ocr-worker:
+    build: ./workers/ocr
+    container_name: chaostoolbox-ocr-worker
+    restart: unless-stopped
+    environment:
+      OCR_INPUT_PATH: /data/inbox
+      OCR_PROCESSED_PATH: /data/processed
+      OCR_FAILED_PATH: /data/failed
+      OCR_OUTPUT_PATH: /data/output
+      OCR_LANGUAGES: deu+eng
+    volumes:
+      - ./sources/tiktok-inbox:/data/inbox
+      - ./sources/processed:/data/processed
+      - ./sources/failed:/data/failed
+      - ./ocr-output:/data/output
+
+  typesense:
+    image: typesense/typesense:27.1
+    container_name: chaostoolbox-typesense
+    restart: unless-stopped
+    ports:
+      - "8108:8108"
+    environment:
+      TYPESENSE_DATA_DIR: /data
+      TYPESENSE_API_KEY: chaostoolbox-dev-key-change-me
+      TYPESENSE_ENABLE_CORS: "true"
+    volumes:
+      - ./data/typesense:/data

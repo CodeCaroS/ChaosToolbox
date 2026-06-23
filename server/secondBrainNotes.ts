@@ -1,12 +1,13 @@
 import { createHash } from "node:crypto";
 import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
 import { basename, extname, join, relative } from "node:path";
-import type { NoteEntry } from "../src/modules/notes/types";
+import type { NoteEntry, NoteMetadata } from "../src/modules/notes/types";
 
 export type SecondBrainNoteFile = {
   path: string;
   title: string;
   body: string;
+  meta: NoteMetadata;
   contentHash: string;
 };
 
@@ -31,6 +32,7 @@ export function scanSecondBrainNotes(root: string): SecondBrainNoteFile[] {
       path: relative(root, path).replace(/\\/g, "/"),
       title: markdown.title || titleFromMarkdown(path, body),
       body,
+      meta: markdown.meta,
       contentHash: createHash("sha256").update(raw).digest("hex")
     };
   });
@@ -44,7 +46,7 @@ function markdownFiles(root: string): string[] {
       const path = join(directory, name);
       if (statSync(path).isDirectory()) {
         walk(path);
-      } else if (extname(path).toLowerCase() === ".md") {
+      } else if ([".md", ".mdx"].includes(extname(path).toLowerCase())) {
         files.push(path);
       }
     }
@@ -58,12 +60,12 @@ function markdownFiles(root: string): string[] {
   });
 }
 
-function parseMarkdown(body: string): { body: string; title: string | null } {
+function parseMarkdown(body: string): { body: string; title: string | null; meta: NoteMetadata } {
   const match = body.match(/^---\n([\s\S]*?)\n---\n?/);
-  if (!match) return { body, title: null };
+  if (!match) return { body, title: null, meta: {} };
 
-  const title = match[1].match(/^title:\s*["']?([^"'\n]+)["']?\s*$/m)?.[1]?.trim() ?? null;
-  return { body: body.slice(match[0].length).trimStart(), title };
+  const meta = parseFrontmatter(match[1]);
+  return { body: body.slice(match[0].length).trimStart(), title: meta.title ?? null, meta };
 }
 
 function titleFromMarkdown(path: string, body: string): string {
@@ -77,4 +79,27 @@ function depth(path: string): number {
 
 function readmeRank(path: string): number {
   return basename(path).toLowerCase() === "readme.md" ? 0 : 1;
+}
+
+function parseFrontmatter(value: string): NoteMetadata {
+  const meta: NoteMetadata = {};
+  const lines = value.split("\n");
+  for (let index = 0; index < lines.length; index++) {
+    const pair = lines[index]?.match(/^([A-Za-z][\w-]*):\s*(.*)$/);
+    if (!pair) continue;
+    const key = pair[1] as keyof NoteMetadata;
+    let raw = pair[2].trim();
+    while (!raw && lines[index + 1]?.match(/^\s*-\s+/)) {
+      index++;
+      raw += `${raw ? "," : ""}${lines[index].replace(/^\s*-\s+/, "").trim()}`;
+    }
+    const clean = stripQuotes(raw);
+    if (key === "tags") meta.tags = clean.replace(/^\[/, "").replace(/\]$/, "").split(",").map((tag) => stripQuotes(tag.trim())).filter(Boolean);
+    else if (["title", "kind", "status", "sourceType", "summary", "description"].includes(key)) meta[key] = clean;
+  }
+  return meta;
+}
+
+function stripQuotes(value: string): string {
+  return value.replace(/^["']|["']$/g, "").trim();
 }

@@ -5,10 +5,12 @@ type SourceStatus = "inbox" | "keep" | "refine" | "archived";
 
 defineProps<{
   source: LinkEntry & { status: SourceStatus; body: string };
+  showNote?: boolean;
 }>();
 
 defineEmits<{
   keep: [];
+  note: [];
   refine: [];
   archive: [];
 }>();
@@ -22,7 +24,7 @@ const statusIcons: Record<SourceStatus, string> = {
 </script>
 
 <template>
-  <article class="rounded-md border border-base-300 bg-base-200 p-4">
+  <article class="min-w-0 rounded-md border border-base-300 bg-base-200 p-4">
     <div class="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
       <div class="min-w-0">
         <div class="flex flex-wrap gap-2">
@@ -30,26 +32,29 @@ const statusIcons: Record<SourceStatus, string> = {
             <i class="fa-solid" :class="statusIcons[source.status]"></i>
             {{ source.status }}
           </span>
-          <span v-for="tag in source.tags.filter((current) => !current.startsWith('status:'))" :key="tag" class="badge badge-outline rounded-md">
+          <span v-for="tag in source.tags.filter((current) => !current.startsWith('status:'))" :key="tag" class="badge badge-outline max-w-full rounded-md">
             <i class="fa-solid fa-tag"></i>
-            {{ tag }}
+            <span class="truncate">{{ tag }}</span>
           </span>
         </div>
-        <h3 class="mt-2 text-xl font-semibold">{{ source.title }}</h3>
-        <p v-if="source.description" class="mt-1 text-sm leading-6 text-base-content/70">{{ source.description }}</p>
+        <h3 class="mt-2 break-words text-xl font-semibold">{{ source.title }}</h3>
+        <p v-if="source.description" class="mt-1 break-words text-sm leading-6 text-base-content/70">{{ source.description }}</p>
         <a class="mt-2 inline-flex max-w-full items-center gap-2 truncate text-sm text-primary" :href="source.url" target="_blank" rel="noreferrer">
           <i class="fa-solid fa-arrow-up-right-from-square"></i>
           <span class="truncate">{{ source.url }}</span>
         </a>
       </div>
-      <div class="flex shrink-0 gap-1 rounded-md border border-base-300 bg-base-100 p-1">
-        <button class="btn btn-sm btn-square rounded-md" type="button" aria-label="Keep" title="Keep" @click="$emit('keep')">
+      <div class="join shrink-0">
+        <button class="btn btn-sm btn-square join-item" type="button" aria-label="Keep" title="Keep" @click="$emit('keep')">
           <i class="fa-solid fa-bookmark"></i>
         </button>
-        <button class="btn btn-sm btn-square rounded-md" type="button" aria-label="Refine" title="Refine" @click="$emit('refine')">
+        <button class="btn btn-sm btn-square join-item" type="button" aria-label="Refine" title="Refine" @click="$emit('refine')">
           <i class="fa-solid fa-pen-nib"></i>
         </button>
-        <button class="btn btn-sm btn-square rounded-md" type="button" aria-label="Archive" title="Archive" @click="$emit('archive')">
+        <button v-if="showNote" class="btn btn-sm btn-square join-item" type="button" aria-label="Note" title="Note" @click="$emit('note')">
+          <i class="fa-solid fa-note-sticky"></i>
+        </button>
+        <button class="btn btn-sm btn-square join-item" type="button" aria-label="Archive" title="Archive" @click="$emit('archive')">
           <i class="fa-solid fa-box-archive"></i>
         </button>
       </div>

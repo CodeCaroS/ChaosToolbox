@@ -26,9 +26,30 @@ test("second brain sync imports and updates markdown notes", () => {
       title: "Better Home",
       body: "Updated body.",
       categoryId: 1,
-      categoryName: "second-brain"
+      categoryName: "second-brain",
+      sourcePath: "README.md"
     }
   ]);
+  notes.close();
+});
+
+test("second brain sync exposes frontmatter metadata for filters", () => {
+  const root = mkdtempSync(join(tmpdir(), "chaostoolbox-"));
+  const vault = join(root, "second-brain");
+  const dbPath = join(root, "notes.sqlite");
+  mkdirSync(vault, { recursive: true });
+  writeFileSync(join(vault, "agent.md"), "---\ntitle: Agent Note\nkind: knowledge\nstatus: active\ntags: [ai, workflow]\n---\nBody.");
+
+  syncSecondBrainNotes(dbPath, vault);
+  const notes = createNoteStore(dbPath);
+
+  assert.deepEqual(notes.listNotes()[0]?.meta, {
+    title: "Agent Note",
+    kind: "knowledge",
+    status: "active",
+    tags: ["ai", "workflow"]
+  });
+
   notes.close();
 });
 
@@ -93,8 +114,58 @@ test("second brain sync writes local note changes back to markdown files", () =>
   notes.close();
 
   assert.deepEqual(syncSecondBrainNotes(dbPath, vault), { created: 0, updated: 0, unchanged: 0, deleted: 0, written: 1, conflicts: 0 });
-  assert.equal(readFileSync(join(vault, "README.md"), "utf8"), "# Local Home\n\nLocal body.");
+  assert.equal(readFileSync(join(vault, "README.md"), "utf8"), "---\ntitle: \"Local Home\"\nstatus: draft\ntags: []\n---\n\nLocal body.\n");
   assert.deepEqual(syncSecondBrainNotes(dbPath, vault), { created: 0, updated: 0, unchanged: 1, deleted: 0, written: 0, conflicts: 0 });
+});
+
+test("second brain sync moves refined ai-captures out of inbox", () => {
+  const root = mkdtempSync(join(tmpdir(), "chaostoolbox-second-brain-refined-"));
+  const vault = join(root, "second-brain");
+  const dbPath = join(root, "notes.sqlite");
+  mkdirSync(join(vault, "00-inbox", "ai-captures"), { recursive: true });
+  writeFileSync(join(vault, "00-inbox", "ai-captures", "capture.md"), "---\ntitle: Capture\ntype: ai-capture\nstatus: inbox\ntags: []\n---\n\nInbox body.");
+  syncSecondBrainNotes(dbPath, vault);
+
+  const notes = createNoteStore(dbPath);
+  notes.updateNote(1, {
+    title: "Capture",
+    body: "---\ntitle: \"Capture\"\nkind: ai-capture\nstatus: refined\ntags: []\n---\n\nReviewed body.",
+    categoryId: 1
+  });
+  notes.close();
+
+  assert.deepEqual(syncSecondBrainNotes(dbPath, vault), { created: 0, updated: 0, unchanged: 0, deleted: 0, written: 1, conflicts: 0 });
+  assert.equal(existsSync(join(vault, "00-inbox", "ai-captures", "capture.md")), false);
+  assert.equal(readFileSync(join(vault, "01-knowledge", "ai-captures", "capture.md"), "utf8"), "---\ntitle: \"Capture\"\nkind: ai-capture\nstatus: refined\ntags: []\n---\n\nReviewed body.\n");
+
+  const synced = createNoteStore(dbPath);
+  assert.equal(synced.listNotes()[0].sourcePath, "01-knowledge/ai-captures/capture.md");
+  synced.close();
+});
+
+test("second brain sync nests refined knowledge notes by topic", () => {
+  const root = mkdtempSync(join(tmpdir(), "chaostoolbox-second-brain-topic-"));
+  const vault = join(root, "second-brain");
+  const dbPath = join(root, "notes.sqlite");
+  mkdirSync(join(vault, "00-inbox", "ai-captures"), { recursive: true });
+  writeFileSync(join(vault, "00-inbox", "ai-captures", "capture.md"), "---\ntitle: Capture\ntype: ai-capture\nstatus: inbox\ntags: []\n---\n\nInbox body.");
+  syncSecondBrainNotes(dbPath, vault);
+
+  const notes = createNoteStore(dbPath);
+  notes.updateNote(1, {
+    title: "Capture",
+    body: "---\ntitle: \"Capture\"\nkind: ai-capture\nstatus: refined\ntopic: LLM Workflows\ntags: []\n---\n\nReviewed body.",
+    categoryId: 1
+  });
+  notes.close();
+
+  assert.deepEqual(syncSecondBrainNotes(dbPath, vault), { created: 0, updated: 0, unchanged: 0, deleted: 0, written: 1, conflicts: 0 });
+  assert.equal(existsSync(join(vault, "00-inbox", "ai-captures", "capture.md")), false);
+  assert.equal(readFileSync(join(vault, "01-knowledge", "llm-workflows", "ai-captures", "capture.md"), "utf8"), "---\ntitle: \"Capture\"\nkind: ai-capture\nstatus: refined\ntopic: LLM Workflows\ntags: []\n---\n\nReviewed body.\n");
+
+  const synced = createNoteStore(dbPath);
+  assert.equal(synced.listNotes()[0].sourcePath, "01-knowledge/llm-workflows/ai-captures/capture.md");
+  synced.close();
 });
 
 test("second brain sync does not overwrite when file and note both changed", () => {

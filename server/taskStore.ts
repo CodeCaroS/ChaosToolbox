@@ -1,9 +1,11 @@
 import Database from "better-sqlite3";
+import { deleteArtifactForEntity, ensureArtifactCore, upsertArtifact } from "./artifactCore";
 import type { NewTaskEntry, TaskEntry } from "../src/modules/tasks/types";
 
 export function createTaskStore(filename: string) {
   const db = new Database(filename);
   db.pragma("foreign_keys = ON");
+  ensureArtifactCore(db);
   db.exec(`
     CREATE TABLE IF NOT EXISTS tasks (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -103,7 +105,16 @@ export function createTaskStore(filename: string) {
       .run(task.title.trim(), task.notes.trim(), task.priority, task.dueDate, task.repeat, task.categoryId, JSON.stringify(task.steps));
     const taskId = Number(result.lastInsertRowid);
     setTags(taskId, task.tags);
-    return getTask(taskId);
+    const saved = getTask(taskId);
+    upsertArtifact(db, {
+      entityId: saved.id,
+      entityType: "task",
+      type: "task",
+      title: saved.title,
+      status: taskStatus(saved.tags),
+      summary: saved.notes || ""
+    });
+    return saved;
   });
 
   function addTask(task: NewTaskEntry): TaskEntry {
@@ -116,7 +127,16 @@ export function createTaskStore(filename: string) {
       .run(task.title.trim(), task.notes.trim(), task.priority, task.dueDate, task.repeat, task.categoryId, JSON.stringify(task.steps), id);
     if (result.changes === 0) return null;
     setTags(id, task.tags);
-    return result.changes === 0 ? null : getTask(id);
+    const updated = getTask(id);
+    upsertArtifact(db, {
+      entityId: updated.id,
+      entityType: "task",
+      type: "task",
+      title: updated.title,
+      status: taskStatus(updated.tags),
+      summary: updated.notes || ""
+    });
+    return result.changes === 0 ? null : updated;
   });
 
   function updateTask(id: number, task: NewTaskEntry): TaskEntry | null {
@@ -129,7 +149,9 @@ export function createTaskStore(filename: string) {
   }
 
   function deleteTask(id: number): boolean {
-    return db.prepare("DELETE FROM tasks WHERE id = ?").run(id).changes > 0;
+    const deleted = db.prepare("DELETE FROM tasks WHERE id = ?").run(id).changes > 0;
+    if (deleted) deleteArtifactForEntity(db, "task", id);
+    return deleted;
   }
 
   return {
@@ -140,4 +162,9 @@ export function createTaskStore(filename: string) {
     toggleTask,
     updateTask
   };
+}
+
+function taskStatus(tags: string[]) {
+  const tag = tags.find((current) => current.startsWith("status:"));
+  return tag?.replace("status:", "") || "draft";
 }

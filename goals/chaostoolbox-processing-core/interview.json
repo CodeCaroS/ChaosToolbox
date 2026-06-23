@@ -1,0 +1,163 @@
+{
+  "stage": "interview",
+  "title": "ChaosToolbox Processing Core",
+  "goalSlug": "chaostoolbox-processing-core",
+  "questions": [
+    {
+      "id": "primary_shift",
+      "prompt": "What should the first milestone primarily optimize for?",
+      "description": "The memo proposes a processing system, not another isolated feature island.",
+      "answerMode": "single-custom",
+      "recommendedAnswer": "A local processing core: artifact model, relations, review workflow, and search should become the center of the app before adding any larger new surface area.",
+      "recommendedOptionIds": [
+        "processing-core"
+      ],
+      "options": [
+        {
+          "id": "processing-core",
+          "label": "Processing core"
+        },
+        {
+          "id": "surface-polish",
+          "label": "Surface polish"
+        },
+        {
+          "id": "connector-broadening",
+          "label": "Connector broadening"
+        }
+      ],
+      "required": true
+    },
+    {
+      "id": "scope",
+      "prompt": "What should be in scope for the first implementation pass?",
+      "description": "The memo names a lot of pieces; this pins down the version 0.2 boundary.",
+      "answerMode": "multi-custom",
+      "recommendedAnswer": "Backend modularization, Artifact + Relation model, review queue with K/R/A, SQLite FTS5 search and saved searches, decision/project modules, job detail view, and the existing optional AI hooks.",
+      "recommendedOptionIds": [
+        "backend",
+        "artifact",
+        "review",
+        "search",
+        "decision",
+        "project",
+        "jobs",
+        "ai"
+      ],
+      "options": [
+        {
+          "id": "backend",
+          "label": "Backend modularization"
+        },
+        {
+          "id": "artifact",
+          "label": "Artifact + relation model"
+        },
+        {
+          "id": "review",
+          "label": "Review queue and K/R/A"
+        },
+        {
+          "id": "search",
+          "label": "FTS5 search and saved searches"
+        },
+        {
+          "id": "decision",
+          "label": "Decision module"
+        },
+        {
+          "id": "project",
+          "label": "Project module"
+        },
+        {
+          "id": "jobs",
+          "label": "Job detail views"
+        },
+        {
+          "id": "ai",
+          "label": "AI as optional"
+        }
+      ],
+      "required": true
+    },
+    {
+      "id": "out_of_scope",
+      "prompt": "What should stay out of scope for now?",
+      "description": "The memo explicitly warns against overreaching into sync and platform work too early.",
+      "answerMode": "multi-custom",
+      "recommendedAnswer": "Cloud sync, CRDTs, mobile, multiuser, large AI-agent automation, and broad connector rewrites stay out of scope for this pass.",
+      "recommendedOptionIds": [
+        "sync",
+        "crdt",
+        "mobile",
+        "multiuser",
+        "automation",
+        "connectors"
+      ],
+      "options": [
+        {
+          "id": "sync",
+          "label": "Cloud sync"
+        },
+        {
+          "id": "crdt",
+          "label": "CRDTs"
+        },
+        {
+          "id": "mobile",
+          "label": "Mobile app"
+        },
+        {
+          "id": "multiuser",
+          "label": "Multiuser"
+        },
+        {
+          "id": "automation",
+          "label": "Big AI automations"
+        },
+        {
+          "id": "connectors",
+          "label": "Connector rewrite"
+        }
+      ],
+      "required": true
+    },
+    {
+      "id": "success",
+      "prompt": "What should count as success for this version?",
+      "description": "This should be something we can verify directly in code and behavior.",
+      "answerMode": "multi-custom",
+      "recommendedAnswer": "The app has a modular backend, a shared artifact/relations core, searchable local data with FTS5, a review queue that drives action, and the core workflow still works offline without AI.",
+      "recommendedOptionIds": [
+        "modular",
+        "shared-core",
+        "searchable",
+        "review-driven",
+        "offline"
+      ],
+      "options": [
+        {
+          "id": "modular",
+          "label": "Modular backend"
+        },
+        {
+          "id": "shared-core",
+          "label": "Shared artifact core"
+        },
+        {
+          "id": "searchable",
+          "label": "Searchable local data"
+        },
+        {
+          "id": "review-driven",
+          "label": "Review drives work"
+        },
+        {
+          "id": "offline",
+          "label": "Offline works"
+        }
+      ],
+      "required": true
+    }
+  ]
+}
